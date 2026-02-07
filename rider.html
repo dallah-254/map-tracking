@@ -1,0 +1,121 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <title>Errand Rider Console</title>
+    <link href="https://unpkg.com/maplibre-gl@3.x/dist/maplibre-gl.css" rel="stylesheet" />
+    <script src="https://unpkg.com/maplibre-gl@3.x/dist/maplibre-gl.js"></script>
+    <style>
+        :root { --amazon-orange: #ff9900; --dark-navy: #232f3e; }
+        body { margin: 0; padding: 0; font-family: 'Segoe UI', sans-serif; display: flex; flex-direction: column; height: 100vh; background: #1a1a1a; color: white; }
+        
+        #map { flex-grow: 1; width: 100%; }
+
+        .control-panel { padding: 20px; background: var(--dark-navy); border-top: 4px solid var(--amazon-orange); box-shadow: 0 -5px 15px rgba(0,0,0,0.5); }
+        
+        .mission-card { background: #333; padding: 15px; border-radius: 8px; margin-bottom: 15px; border-left: 4px solid var(--amazon-orange); }
+        
+        .btn-simulate { 
+            width: 100%; padding: 15px; background: #007bff; color: white; border: none; 
+            border-radius: 5px; font-weight: bold; cursor: pointer; font-size: 16px;
+        }
+        .btn-simulate:hover { background: #0056b3; }
+        
+        #status-text { font-size: 14px; color: #aaa; margin-top: 10px; text-align: center; }
+        .mode-badge { background: #28a745; padding: 2px 8px; border-radius: 10px; font-size: 10px; vertical-align: middle; }
+    </style>
+</head>
+<body>
+
+<div id="map"></div>
+
+<div class="control-panel">
+    <div class="mission-card">
+        <div style="font-size: 12px; color: #ff9900; text-transform: uppercase;">Active Mission</div>
+        <div id="mission-status" style="font-size: 18px; margin-top: 5px;">Waiting for Client Order...</div>
+    </div>
+
+    <button class="btn-simulate" onclick="toggleSimulation()">📍 Change My Location</button>
+    <div id="status-text">Click anywhere on the map to move the rider.</div>
+</div>
+
+<script>
+    // --- SETTINGS ---
+    const API_KEY = "v1.public.eyJqdGkiOiI5ODhmMzBiNi1hYWFjLTRlMmEtOTY0My0wYTgwMmRlZGM1MDkifYr1nFD6LeDRmEuYwAHCT1BCu-cwEaqnjVJ53ocPhRObx9Tk85tar2QpErtuPLdSfruFMMSoMYHxvnKVdCVpZDjSqGpsFGf97OXfY9qmQypPo9DOQOWlMcVWjLB2vOf94Rubo-fV1-11zGEcyaYyORTjBjfKBqOqyGb7aM_96BvTwnGIoJADgbtcqW1BtupSRTdxCv3PZYOKX-J2InUhT70c_jU5zWjui8XsFD1CzKeA-My0Bm-0hWho55XMB0sOdg9lmtAsOi0g6Kdsh4avm_a1jqm5ZF4qU3PevoFe_wYinkF-eNkW9kQIKRDpzKNmQcAYUB2fzr8ijnXShy7pZV8.ZWU0ZWIzMTktMWRhNi00Mzg0LTllMzYtNzlmMDU3MjRmYTkx";
+    const LAMBDA_URL = "https://35amoftvv8.execute-api.us-east-1.amazonaws.com/calculate";
+
+    const map = new maplibregl.Map({
+        container: 'map',
+        style: `https://maps.geo.us-east-1.amazonaws.com/v2/styles/Standard/descriptor?key=${API_KEY}`,
+        center: [36.8219, -1.2921],
+        zoom: 14
+    });
+
+    let currentPos = [36.8219, -1.2921];
+    const riderMarker = new maplibregl.Marker({ color: "#007bff" }).setLngLat(currentPos).addTo(map);
+    const pickupMarker = new maplibregl.Marker({ color: "#28a745" }).setLngLat([0,0]).addTo(map);
+
+    // --- SIMULATION LOGIC ---
+    // When the rider clicks the map, we update their location immediately
+    map.on('click', (e) => {
+        const newCoords = [e.lngLat.lng, e.lngLat.lat];
+        updateRiderLocation(newCoords);
+    });
+
+    async function updateRiderLocation(coords) {
+        currentPos = coords;
+        riderMarker.setLngLat(coords);
+        
+        document.getElementById('status-text').innerText = "Syncing with AWS...";
+
+        try {
+            const res = await fetch(LAMBDA_URL, {
+                method: 'POST',
+                body: JSON.stringify({
+                    action: 'rider_sync',
+                    riderId: 'Rider-1',
+                    position: coords
+                })
+            });
+            const data = await res.json();
+
+            // If an order exists in DB, show the pickup point on rider's map
+            if (data.order && data.order.PickUpCoords) {
+                document.getElementById('mission-status').innerText = "Heading to Pick-up point";
+                pickupMarker.setLngLat(data.order.PickUpCoords);
+                
+                // Draw a simple line to the target
+                drawDirectionLine(coords, data.order.PickUpCoords);
+            }
+
+            document.getElementById('status-text').innerText = "✅ Location Synced. Client can see you.";
+        } catch (err) {
+            document.getElementById('status-text').innerText = "⚠️ Sync Error. Check Lambda.";
+        }
+    }
+
+    function drawDirectionLine(start, end) {
+        const geojson = {
+            'type': 'Feature',
+            'geometry': { 'type': 'LineString', 'coordinates': [start, end] }
+        };
+        if (map.getSource('mission-path')) {
+            map.getSource('mission-path').setData(geojson);
+        } else {
+            map.addSource('mission-path', { 'type': 'geojson', 'data': geojson });
+            map.addLayer({
+                'id': 'mission-path-layer',
+                'type': 'line',
+                'source': 'mission-path',
+                'paint': { 'line-color': '#ff9900', 'line-width': 3, 'line-dasharray': [2, 2] }
+            });
+        }
+    }
+
+    // Auto-sync every 10 seconds even if not clicking
+    setInterval(() => {
+        updateRiderLocation(currentPos);
+    }, 10000);
+
+</script>
+</body>
+</html>

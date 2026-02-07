@@ -1,0 +1,199 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <title>Errand Client Dashboard</title>
+    <link href="https://unpkg.com/maplibre-gl@3.x/dist/maplibre-gl.css" rel="stylesheet" />
+    <script src="https://unpkg.com/maplibre-gl@3.x/dist/maplibre-gl.js"></script>
+    <style>
+        :root { --amazon-orange: #ff9900; --dark-navy: #232f3e; --bg-light: #f8f9fa; }
+        body { margin: 0; padding: 0; font-family: 'Segoe UI', Arial, sans-serif; display: flex; height: 100vh; overflow: hidden; }
+        
+        /* SIDE PANEL */
+        #side-panel { width: 380px; background: white; height: 100%; display: flex; flex-direction: column; box-shadow: 4px 0 15px rgba(0,0,0,0.1); z-index: 10; }
+        .header { background: var(--dark-navy); color: white; padding: 25px; text-align: center; }
+        .content { padding: 20px; flex-grow: 1; overflow-y: auto; }
+
+        /* UI ELEMENTS */
+        .step-box { background: #eef6ff; border-left: 5px solid #007bff; padding: 15px; margin-bottom: 20px; border-radius: 4px; font-size: 14px; line-height: 1.5; }
+        .price-display { background: var(--bg-light); border-radius: 10px; padding: 25px; text-align: center; margin-bottom: 20px; border: 1px solid #ddd; display: none; }
+        .price-val { font-size: 32px; font-weight: bold; color: #28a745; margin: 10px 0; }
+        .stat-label { font-size: 12px; color: #666; text-transform: uppercase; letter-spacing: 1px; }
+
+        button { width: 100%; padding: 16px; border: none; border-radius: 6px; font-size: 16px; font-weight: bold; cursor: pointer; transition: 0.3s; }
+        .btn-confirm { background: var(--amazon-orange); color: white; margin-top: 10px; }
+        .btn-confirm:hover { background: #e68a00; transform: translateY(-2px); }
+        .btn-confirm:disabled { background: #ccc; cursor: not-allowed; }
+        .btn-track { background: #007bff; color: white; display: none; margin-top: 10px; }
+
+        /* MAP */
+        #map { flex-grow: 1; position: relative; }
+        .rider-marker { font-size: 35px; cursor: pointer; transition: all 0.5s ease; }
+    </style>
+</head>
+<body>
+
+<div id="side-panel">
+    <div class="header">
+        <h2 style="margin:0">Errand Dispatch</h2>
+    </div>
+    
+    <div class="content">
+        <div id="status-step" class="step-box">
+            📍 <b>Step 1:</b> Click on the map to set your <b>Pickup Location</b>.
+        </div>
+
+        <div id="price-card" class="price-display">
+            <div class="stat-label">Estimated Price</div>
+            <div id="price-val" class="price-val">KES 0</div>
+            <div id="dist-info" style="font-size: 14px; color: #555; margin-bottom: 15px;">Distance: 0.0 km</div>
+            
+            <button id="confirm-btn" class="btn-confirm" onclick="handleConfirm()">Confirm & Find Rider</button>
+            <button id="track-btn" class="btn-track" onclick="zoomToRider()">Find My Rider 🏍️</button>
+        </div>
+
+        <div id="order-meta" style="margin-top: 20px; border-top: 1px solid #eee; padding-top: 20px; display:none;">
+            <p><b>Order ID:</b> <span id="display-oid">---</span></p>
+            <p><b>Status:</b> <span id="display-status" style="color: #007bff;">Processing...</span></p>
+        </div>
+    </div>
+</div>
+
+<div id="map"></div>
+
+<script>
+    // --- SETTINGS (Replace with your own) ---
+    const API_KEY = "v1.public.eyJqdGkiOiI5ODhmMzBiNi1hYWFjLTRlMmEtOTY0My0wYTgwMmRlZGM1MDkifYr1nFD6LeDRmEuYwAHCT1BCu-cwEaqnjVJ53ocPhRObx9Tk85tar2QpErtuPLdSfruFMMSoMYHxvnKVdCVpZDjSqGpsFGf97OXfY9qmQypPo9DOQOWlMcVWjLB2vOf94Rubo-fV1-11zGEcyaYyORTjBjfKBqOqyGb7aM_96BvTwnGIoJADgbtcqW1BtupSRTdxCv3PZYOKX-J2InUhT70c_jU5zWjui8XsFD1CzKeA-My0Bm-0hWho55XMB0sOdg9lmtAsOi0g6Kdsh4avm_a1jqm5ZF4qU3PevoFe_wYinkF-eNkW9kQIKRDpzKNmQcAYUB2fzr8ijnXShy7pZV8.ZWU0ZWIzMTktMWRhNi00Mzg0LTllMzYtNzlmMDU3MjRmYTkx";
+    const LAMBDA_URL = "https://35amoftvv8.execute-api.us-east-1.amazonaws.com/calculate";
+
+    const map = new maplibregl.Map({
+        container: 'map',
+        style: `https://maps.geo.us-east-1.amazonaws.com/v2/styles/Standard/descriptor?key=${API_KEY}`,
+        center: [36.8219, -1.2921],
+        zoom: 13
+    });
+
+    let locations = []; // [Pickup, Dropoff]
+    let markers = [];
+    let riderMarker = null;
+
+    // --- MAP INTERACTION ---
+    map.on('click', (e) => {
+        if (locations.length >= 2) resetEverything();
+
+        const isPickup = locations.length === 0;
+        const color = isPickup ? "#28a745" : "#dc3545";
+        
+        const m = new maplibregl.Marker({ color }).setLngLat(e.lngLat).addTo(map);
+        markers.push(m);
+        locations.push([e.lngLat.lng, e.lngLat.lat]);
+
+        if (isPickup) {
+            document.getElementById('status-step').innerHTML = "🏁 <b>Step 2:</b> Click the map to set the <b>Drop-off Destination</b>.";
+        } else {
+            getQuote();
+        }
+    });
+
+    async function getQuote() {
+        document.getElementById('status-step').innerHTML = "⏳ Calculating best route...";
+        try {
+            const res = await fetch(LAMBDA_URL, {
+                method: 'POST',
+                body: JSON.stringify({ action: 'calculate', Origin: locations[0], Destination: locations[1] })
+            });
+            const data = await res.json();
+            
+            document.getElementById('price-val').innerText = `KES ${data.price}`;
+            document.getElementById('dist-info').innerText = `Distance: ${data.distance} km`;
+            document.getElementById('price-card').style.display = 'block';
+            document.getElementById('status-step').innerHTML = "✅ Route Ready! Confirm your order to continue.";
+            
+            renderRoute(data.route);
+        } catch (err) {
+            alert("Error fetching quote. Check Lambda logs.");
+        }
+    }
+
+    async function handleConfirm() {
+        const btn = document.getElementById('confirm-btn');
+        btn.disabled = true;
+        btn.innerText = "Saving Order...";
+
+        try {
+            const res = await fetch(LAMBDA_URL, {
+                method: 'POST',
+                body: JSON.stringify({ action: 'create_order', Origin: locations[0], Destination: locations[1] })
+            });
+            const data = await res.json();
+
+            document.getElementById('order-meta').style.display = 'block';
+            document.getElementById('display-oid').innerText = data.orderId;
+            document.getElementById('display-status').innerText = "Rider Dispatched 🏍️";
+            
+            btn.style.display = 'none';
+            document.getElementById('track-btn').style.display = 'block';
+            document.getElementById('status-step').style.display = 'none';
+
+            // Start Live Tracking every 4 seconds
+            setInterval(fetchRiderPos, 4000);
+        } catch (err) {
+            alert("Order failed. Make sure DynamoDB table 'ErrandOrders' exists.");
+            btn.disabled = false;
+        }
+    }
+
+    async function fetchRiderPos() {
+        try {
+            const res = await fetch(LAMBDA_URL, {
+                method: 'POST',
+                body: JSON.stringify({ action: 'track', riderId: 'Rider-1' })
+            });
+            const data = await res.json();
+
+            if (data.position) {
+                if (!riderMarker) {
+                    const el = document.createElement('div');
+                    el.className = 'rider-marker';
+                    el.innerHTML = '🏍️';
+                    riderMarker = new maplibregl.Marker({element: el}).setLngLat(data.position).addTo(map);
+                } else {
+                    riderMarker.setLngLat(data.position);
+                }
+            }
+        } catch (e) { console.log("Waiting for rider signal..."); }
+    }
+
+    // --- UTILITIES ---
+    function renderRoute(coordinates) {
+        if (map.getSource('route')) {
+            map.getSource('route').setData({ 'type': 'Feature', 'geometry': { 'type': 'LineString', 'coordinates': coordinates } });
+        } else {
+            map.addSource('route', { 'type': 'geojson', 'data': { 'type': 'Feature', 'geometry': { 'type': 'LineString', 'coordinates': coordinates } } });
+            map.addLayer({ 'id': 'route-line', 'type': 'line', 'source': 'route', 'paint': { 'line-color': '#007bff', 'line-width': 6, 'line-opacity': 0.6 } });
+        }
+        const bounds = coordinates.reduce((acc, coord) => acc.extend(coord), new maplibregl.LngLatBounds(coordinates[0], coordinates[0]));
+        map.fitBounds(bounds, { padding: 80 });
+    }
+
+    function zoomToRider() {
+        if (riderMarker) map.flyTo({ center: riderMarker.getLngLat(), zoom: 16 });
+    }
+
+    function resetEverything() {
+        locations = [];
+        markers.forEach(m => m.remove());
+        markers = [];
+        if (riderMarker) riderMarker.remove();
+        riderMarker = null;
+        if (map.getSource('route')) map.getSource('route').setData({ 'type': 'Feature', 'geometry': { 'type': 'LineString', 'coordinates': [] } });
+        document.getElementById('price-card').style.display = 'none';
+        document.getElementById('order-meta').style.display = 'none';
+        document.getElementById('track-btn').style.display = 'none';
+        document.getElementById('confirm-btn').style.display = 'block';
+        document.getElementById('confirm-btn').disabled = false;
+        document.getElementById('confirm-btn').innerText = "Confirm & Find Rider";
+        document.getElementById('status-step').style.display = 'block';
+    }
+</script>
+</body>
+</html>

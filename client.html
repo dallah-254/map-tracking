@@ -1,199 +1,200 @@
 <!DOCTYPE html>
-<html>
+<html lang="en">
 <head>
-    <title>Errand Client Dashboard</title>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Client Master Dashboard</title>
     <link href="https://unpkg.com/maplibre-gl@3.x/dist/maplibre-gl.css" rel="stylesheet" />
     <script src="https://unpkg.com/maplibre-gl@3.x/dist/maplibre-gl.js"></script>
     <style>
-        :root { --amazon-orange: #ff9900; --dark-navy: #232f3e; --bg-light: #f8f9fa; }
-        body { margin: 0; padding: 0; font-family: 'Segoe UI', Arial, sans-serif; display: flex; height: 100vh; overflow: hidden; }
+        :root { --amazon-navy: #232f3e; --amazon-orange: #ff9900; --sidebar-width: 380px; }
+        body { margin: 0; padding: 0; font-family: 'Segoe UI', sans-serif; display: flex; height: 100vh; overflow: hidden; }
+
+        /* Sidebar Styling */
+        .sidebar { width: var(--sidebar-width); background: var(--amazon-navy); color: white; display: flex; flex-direction: column; z-index: 20; }
+        .sidebar-header { padding: 20px; background: #131921; border-bottom: 2px solid var(--amazon-orange); }
+        .sidebar-content { flex: 1; padding: 20px; overflow-y: auto; }
+
+        /* Map */
+        #map { flex: 1; position: relative; background: #eee; }
+
+        /* UI Components */
+        .stat-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; margin-bottom: 15px; }
+        .stat-item { background: #37475a; padding: 10px; border-radius: 5px; text-align: center; }
+        .stat-val { display: block; font-size: 18px; font-weight: bold; color: var(--amazon-orange); }
+        .stat-lab { font-size: 10px; color: #ccc; }
+
+        button { width: 100%; padding: 12px; border: none; border-radius: 5px; font-weight: bold; cursor: pointer; transition: 0.2s; margin-bottom: 10px; }
+        .btn-confirm { background: var(--amazon-orange); color: white; }
+        .btn-track { background: #00a8e1; color: white; margin-top: 8px; font-size: 12px; }
+        button:disabled { opacity: 0.5; cursor: not-allowed; }
+
+        /* Order Cards */
+        .order-card { background: white; color: #333; padding: 15px; border-radius: 8px; margin-bottom: 12px; border-left: 5px solid #888; transition: 0.3s; }
+        .order-card.active { border-left-color: #28a745; background: #f0fff4; }
+        .order-card h4 { margin: 0; display: flex; justify-content: space-between; align-items: center; font-size: 14px; }
         
-        /* SIDE PANEL */
-        #side-panel { width: 380px; background: white; height: 100%; display: flex; flex-direction: column; box-shadow: 4px 0 15px rgba(0,0,0,0.1); z-index: 10; }
-        .header { background: var(--dark-navy); color: white; padding: 25px; text-align: center; }
-        .content { padding: 20px; flex-grow: 1; overflow-y: auto; }
+        .status-pill { font-size: 10px; padding: 3px 8px; border-radius: 12px; color: white; background: #777; text-transform: uppercase; }
+        .pill-active { background: #28a745; animation: pulse-green 2s infinite; }
+        
+        @keyframes pulse-green { 0% { opacity: 1; } 50% { opacity: 0.6; } 100% { opacity: 1; } }
 
-        /* UI ELEMENTS */
-        .step-box { background: #eef6ff; border-left: 5px solid #007bff; padding: 15px; margin-bottom: 20px; border-radius: 4px; font-size: 14px; line-height: 1.5; }
-        .price-display { background: var(--bg-light); border-radius: 10px; padding: 25px; text-align: center; margin-bottom: 20px; border: 1px solid #ddd; display: none; }
-        .price-val { font-size: 32px; font-weight: bold; color: #28a745; margin: 10px 0; }
-        .stat-label { font-size: 12px; color: #666; text-transform: uppercase; letter-spacing: 1px; }
-
-        button { width: 100%; padding: 16px; border: none; border-radius: 6px; font-size: 16px; font-weight: bold; cursor: pointer; transition: 0.3s; }
-        .btn-confirm { background: var(--amazon-orange); color: white; margin-top: 10px; }
-        .btn-confirm:hover { background: #e68a00; transform: translateY(-2px); }
-        .btn-confirm:disabled { background: #ccc; cursor: not-allowed; }
-        .btn-track { background: #007bff; color: white; display: none; margin-top: 10px; }
-
-        /* MAP */
-        #map { flex-grow: 1; position: relative; }
-        .rider-marker { font-size: 35px; cursor: pointer; transition: all 0.5s ease; }
+        #tracker-badge { position: absolute; top: 20px; right: 20px; background: white; padding: 10px 20px; border-radius: 50px; display: none; box-shadow: 0 4px 15px rgba(0,0,0,0.2); font-weight: bold; z-index: 100; color: #232f3e; }
     </style>
 </head>
 <body>
 
-<div id="side-panel">
-    <div class="header">
-        <h2 style="margin:0">Errand Dispatch</h2>
+<div class="sidebar">
+    <div class="sidebar-header">
+        <h2 style="margin:0; color:var(--amazon-orange);">ERRAND PRO</h2>
+        <p style="font-size:12px; color:#888;">Customer Portal</p>
     </div>
-    
-    <div class="content">
-        <div id="status-step" class="step-box">
-            📍 <b>Step 1:</b> Click on the map to set your <b>Pickup Location</b>.
+
+    <div class="sidebar-content">
+        <div id="new-order-ui">
+            <p id="instruct" style="color:var(--amazon-orange); font-size: 13px;">📍 Click map for Pickup & Drop-off</p>
+            <div class="stat-grid">
+                <div class="stat-item"><span id="dist-val" class="stat-val">0.00</span><span class="stat-lab">KM</span></div>
+                <div class="stat-item"><span id="price-val" class="stat-val">0</span><span class="stat-lab">KES</span></div>
+            </div>
+            <button id="confirm-btn" class="btn-confirm" onclick="confirmOrder()" disabled>PLACE ORDER</button>
         </div>
 
-        <div id="price-card" class="price-display">
-            <div class="stat-label">Estimated Price</div>
-            <div id="price-val" class="price-val">KES 0</div>
-            <div id="dist-info" style="font-size: 14px; color: #555; margin-bottom: 15px;">Distance: 0.0 km</div>
-            
-            <button id="confirm-btn" class="btn-confirm" onclick="handleConfirm()">Confirm & Find Rider</button>
-            <button id="track-btn" class="btn-track" onclick="zoomToRider()">Find My Rider 🏍️</button>
-        </div>
-
-        <div id="order-meta" style="margin-top: 20px; border-top: 1px solid #eee; padding-top: 20px; display:none;">
-            <p><b>Order ID:</b> <span id="display-oid">---</span></p>
-            <p><b>Status:</b> <span id="display-status" style="color: #007bff;">Processing...</span></p>
+        <hr style="border:0.5px solid #37475a; margin: 20px 0;">
+        
+        <h3>Active Errands</h3>
+        <div id="order-history">
+            <p style="color:#888; font-size:12px; text-align:center;">No orders yet.</p>
         </div>
     </div>
 </div>
 
-<div id="map"></div>
+<div id="map">
+    <div id="tracker-badge">🛰️ TRACKING RIDER: <span id="active-id"></span></div>
+</div>
 
 <script>
-    // --- SETTINGS (Replace with your own) ---
-    const API_KEY = "v1.public.eyJqdGkiOiI5ODhmMzBiNi1hYWFjLTRlMmEtOTY0My0wYTgwMmRlZGM1MDkifYr1nFD6LeDRmEuYwAHCT1BCu-cwEaqnjVJ53ocPhRObx9Tk85tar2QpErtuPLdSfruFMMSoMYHxvnKVdCVpZDjSqGpsFGf97OXfY9qmQypPo9DOQOWlMcVWjLB2vOf94Rubo-fV1-11zGEcyaYyORTjBjfKBqOqyGb7aM_96BvTwnGIoJADgbtcqW1BtupSRTdxCv3PZYOKX-J2InUhT70c_jU5zWjui8XsFD1CzKeA-My0Bm-0hWho55XMB0sOdg9lmtAsOi0g6Kdsh4avm_a1jqm5ZF4qU3PevoFe_wYinkF-eNkW9kQIKRDpzKNmQcAYUB2fzr8ijnXShy7pZV8.ZWU0ZWIzMTktMWRhNi00Mzg0LTllMzYtNzlmMDU3MjRmYTkx";
-    const LAMBDA_URL = "https://35amoftvv8.execute-api.us-east-1.amazonaws.com/calculate";
+    const CONFIG = {
+        apiKey: "v1.public.eyJqdGkiOiI5ODhmMzBiNi1hYWFjLTRlMmEtOTY0My0wYTgwMmRlZGM1MDkifYr1nFD6LeDRmEuYwAHCT1BCu-cwEaqnjVJ53ocPhRObx9Tk85tar2QpErtuPLdSfruFMMSoMYHxvnKVdCVpZDjSqGpsFGf97OXfY9qmQypPo9DOQOWlMcVWjLB2vOf94Rubo-fV1-11zGEcyaYyORTjBjfKBqOqyGb7aM_96BvTwnGIoJADgbtcqW1BtupSRTdxCv3PZYOKX-J2InUhT70c_jU5zWjui8XsFD1CzKeA-My0Bm-0hWho55XMB0sOdg9lmtAsOi0g6Kdsh4avm_a1jqm5ZF4qU3PevoFe_wYinkF-eNkW9kQIKRDpzKNmQcAYUB2fzr8ijnXShy7pZV8.ZWU0ZWIzMTktMWRhNi00Mzg0LTllMzYtNzlmMDU3MjRmYTkx",
+        apiUrl: "https://2xtdrxfglh.execute-api.us-east-1.amazonaws.com",
+        region: "us-east-1"
+    };
 
     const map = new maplibregl.Map({
         container: 'map',
-        style: `https://maps.geo.us-east-1.amazonaws.com/v2/styles/Standard/descriptor?key=${API_KEY}`,
+        style: `https://maps.geo.${CONFIG.region}.amazonaws.com/v2/styles/Standard/descriptor?key=${CONFIG.apiKey}`,
         center: [36.8219, -1.2921],
-        zoom: 13
+        zoom: 12
     });
 
-    let locations = []; // [Pickup, Dropoff]
+    let points = [];
     let markers = [];
-    let riderMarker = null;
+    let riderMarker = new maplibregl.Marker({ color: "#00a8e1" });
+    let trackingLoop = null;
 
-    // --- MAP INTERACTION ---
+    // 1. PLACE ORDER LOGIC
     map.on('click', (e) => {
-        if (locations.length >= 2) resetEverything();
-
-        const isPickup = locations.length === 0;
-        const color = isPickup ? "#28a745" : "#dc3545";
+        if (points.length >= 2) { points = []; markers.forEach(m => m.remove()); markers = []; }
         
-        const m = new maplibregl.Marker({ color }).setLngLat(e.lngLat).addTo(map);
-        markers.push(m);
-        locations.push([e.lngLat.lng, e.lngLat.lat]);
+        const color = points.length === 0 ? "#28a745" : "#dc3545";
+        const marker = new maplibregl.Marker({ color }).setLngLat(e.lngLat).addTo(map);
+        markers.push(marker);
+        points.push([e.lngLat.lng, e.lngLat.lat]);
 
-        if (isPickup) {
-            document.getElementById('status-step').innerHTML = "🏁 <b>Step 2:</b> Click the map to set the <b>Drop-off Destination</b>.";
-        } else {
-            getQuote();
+        if (points.length === 2) {
+            document.getElementById('confirm-btn').disabled = false;
+            getPriceEstimate();
         }
     });
 
-    async function getQuote() {
-        document.getElementById('status-step').innerHTML = "⏳ Calculating best route...";
-        try {
-            const res = await fetch(LAMBDA_URL, {
-                method: 'POST',
-                body: JSON.stringify({ action: 'calculate', Origin: locations[0], Destination: locations[1] })
-            });
-            const data = await res.json();
-            
-            document.getElementById('price-val').innerText = `KES ${data.price}`;
-            document.getElementById('dist-info').innerText = `Distance: ${data.distance} km`;
-            document.getElementById('price-card').style.display = 'block';
-            document.getElementById('status-step').innerHTML = "✅ Route Ready! Confirm your order to continue.";
-            
-            renderRoute(data.route);
-        } catch (err) {
-            alert("Error fetching quote. Check Lambda logs.");
-        }
+    async function getPriceEstimate() {
+        const res = await fetch(`${CONFIG.apiUrl}/orders`, {
+            method: 'POST',
+            body: JSON.stringify({ Origin: points[0], Destination: points[1] })
+        });
+        const data = await res.json();
+        document.getElementById('dist-val').innerText = data.distance;
+        document.getElementById('price-val').innerText = data.price;
     }
 
-    async function handleConfirm() {
+    async function confirmOrder() {
         const btn = document.getElementById('confirm-btn');
+        btn.innerText = "SAVING...";
         btn.disabled = true;
-        btn.innerText = "Saving Order...";
 
+        await fetch(`${CONFIG.apiUrl}/orders`, {
+            method: 'POST',
+            body: JSON.stringify({ Origin: points[0], Destination: points[1], SaveOrder: true })
+        });
+        
+        alert("Order Placed Successfully!");
+        btn.innerText = "PLACE ORDER";
+        points = []; markers.forEach(m => m.remove()); markers = [];
+        refreshOrders();
+    }
+
+    // 2. FETCH & STATUS SYNC LOGIC
+    async function refreshOrders() {
         try {
-            const res = await fetch(LAMBDA_URL, {
-                method: 'POST',
-                body: JSON.stringify({ action: 'create_order', Origin: locations[0], Destination: locations[1] })
-            });
-            const data = await res.json();
-
-            document.getElementById('order-meta').style.display = 'block';
-            document.getElementById('display-oid').innerText = data.orderId;
-            document.getElementById('display-status').innerText = "Rider Dispatched 🏍️";
+            // Using ?role=client to get all orders from the Universal Lambda
+            const res = await fetch(`${CONFIG.apiUrl}/rider/orders?role=client`);
+            const orders = await res.json();
             
-            btn.style.display = 'none';
-            document.getElementById('track-btn').style.display = 'block';
-            document.getElementById('status-step').style.display = 'none';
+            const listDiv = document.getElementById('order-history');
+            listDiv.innerHTML = "";
 
-            // Start Live Tracking every 4 seconds
-            setInterval(fetchRiderPos, 4000);
-        } catch (err) {
-            alert("Order failed. Make sure DynamoDB table 'ErrandOrders' exists.");
-            btn.disabled = false;
-        }
-    }
-
-    async function fetchRiderPos() {
-        try {
-            const res = await fetch(LAMBDA_URL, {
-                method: 'POST',
-                body: JSON.stringify({ action: 'track', riderId: 'Rider-1' })
+            orders.forEach(order => {
+                const isActive = order.Status === "ACTIVE";
+                const card = document.createElement('div');
+                card.className = `order-card ${isActive ? 'active' : ''}`;
+                
+                card.innerHTML = `
+                    <h4>#${order.OrderId.slice(-5)} 
+                        <span class="status-pill ${isActive ? 'pill-active' : ''}">
+                            ${isActive ? 'Errand In Progress' : 'Searching...'}
+                        </span>
+                    </h4>
+                    <p style="margin: 8px 0; font-size: 12px;">Price: <b>KES ${order.Price}</b></p>
+                    ${isActive ? 
+                        `<button class="btn-track" onclick="startLiveTracking('${order.OrderId}')">🛰️ SEE RIDER LOCATION</button>` : 
+                        `<p style="font-size:11px; color:#666;">Waiting for rider to link...</p>`
+                    }
+                `;
+                listDiv.appendChild(card);
             });
-            const data = await res.json();
+        } catch (e) { console.error("Sync Error", e); }
+    }
 
-            if (data.position) {
-                if (!riderMarker) {
-                    const el = document.createElement('div');
-                    el.className = 'rider-marker';
-                    el.innerHTML = '🏍️';
-                    riderMarker = new maplibregl.Marker({element: el}).setLngLat(data.position).addTo(map);
-                } else {
-                    riderMarker.setLngLat(data.position);
+    // 3. LIVE TRACKING LOGIC
+        function startLiveTracking(orderId) {
+            document.getElementById('tracker-badge').style.display = 'block';
+            
+            if (trackingLoop) clearInterval(trackingLoop);
+            
+            trackingLoop = setInterval(async () => {
+                try {
+                    const res = await fetch(`${CONFIG.apiUrl}/track?orderId=${orderId}`);
+                    const data = await res.json();
+                    
+                    // CHECK: Ensure data.riderLocation exists and is an array
+                    if (data.riderLocation && Array.isArray(data.riderLocation)) {
+                        const [lng, lat] = data.riderLocation;
+                        
+                        // Move the blue marker on the client's map
+                        riderMarker.setLngLat([lng, lat]).addTo(map);
+                        
+                        // Optional: Smoothly follow the rider
+                        map.easeTo({ center: [lng, lat] }); 
+                    }
+                } catch (e) {
+                    console.error("Tracking fetch failed", e);
                 }
-            }
-        } catch (e) { console.log("Waiting for rider signal..."); }
-    }
-
-    // --- UTILITIES ---
-    function renderRoute(coordinates) {
-        if (map.getSource('route')) {
-            map.getSource('route').setData({ 'type': 'Feature', 'geometry': { 'type': 'LineString', 'coordinates': coordinates } });
-        } else {
-            map.addSource('route', { 'type': 'geojson', 'data': { 'type': 'Feature', 'geometry': { 'type': 'LineString', 'coordinates': coordinates } } });
-            map.addLayer({ 'id': 'route-line', 'type': 'line', 'source': 'route', 'paint': { 'line-color': '#007bff', 'line-width': 6, 'line-opacity': 0.6 } });
+            }, 5000); // Check every 5 seconds
         }
-        const bounds = coordinates.reduce((acc, coord) => acc.extend(coord), new maplibregl.LngLatBounds(coordinates[0], coordinates[0]));
-        map.fitBounds(bounds, { padding: 80 });
-    }
 
-    function zoomToRider() {
-        if (riderMarker) map.flyTo({ center: riderMarker.getLngLat(), zoom: 16 });
-    }
-
-    function resetEverything() {
-        locations = [];
-        markers.forEach(m => m.remove());
-        markers = [];
-        if (riderMarker) riderMarker.remove();
-        riderMarker = null;
-        if (map.getSource('route')) map.getSource('route').setData({ 'type': 'Feature', 'geometry': { 'type': 'LineString', 'coordinates': [] } });
-        document.getElementById('price-card').style.display = 'none';
-        document.getElementById('order-meta').style.display = 'none';
-        document.getElementById('track-btn').style.display = 'none';
-        document.getElementById('confirm-btn').style.display = 'block';
-        document.getElementById('confirm-btn').disabled = false;
-        document.getElementById('confirm-btn').innerText = "Confirm & Find Rider";
-        document.getElementById('status-step').style.display = 'block';
-    }
+    // Auto-Sync with DB every 7 seconds to catch Rider "Link" actions
+    setInterval(refreshOrders, 7000);
+    refreshOrders(); // Initial Load
 </script>
 </body>
 </html>

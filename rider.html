@@ -1,121 +1,156 @@
 <!DOCTYPE html>
 <html>
 <head>
-    <title>Errand Rider Console</title>
+    <title>Rider Pro - Live Navigation</title>
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <link href="https://unpkg.com/maplibre-gl@3.x/dist/maplibre-gl.css" rel="stylesheet" />
     <script src="https://unpkg.com/maplibre-gl@3.x/dist/maplibre-gl.js"></script>
     <style>
-        :root { --amazon-orange: #ff9900; --dark-navy: #232f3e; }
-        body { margin: 0; padding: 0; font-family: 'Segoe UI', sans-serif; display: flex; flex-direction: column; height: 100vh; background: #1a1a1a; color: white; }
-        
-        #map { flex-grow: 1; width: 100%; }
-
-        .control-panel { padding: 20px; background: var(--dark-navy); border-top: 4px solid var(--amazon-orange); box-shadow: 0 -5px 15px rgba(0,0,0,0.5); }
-        
-        .mission-card { background: #333; padding: 15px; border-radius: 8px; margin-bottom: 15px; border-left: 4px solid var(--amazon-orange); }
-        
-        .btn-simulate { 
-            width: 100%; padding: 15px; background: #007bff; color: white; border: none; 
-            border-radius: 5px; font-weight: bold; cursor: pointer; font-size: 16px;
-        }
-        .btn-simulate:hover { background: #0056b3; }
-        
-        #status-text { font-size: 14px; color: #aaa; margin-top: 10px; text-align: center; }
-        .mode-badge { background: #28a745; padding: 2px 8px; border-radius: 10px; font-size: 10px; vertical-align: middle; }
+        body { margin: 0; display: flex; height: 100vh; font-family: 'Segoe UI', sans-serif; background: #1a1a1a; }
+        .sidebar { width: 320px; background: #232f3e; color: white; display: flex; flex-direction: column; border-right: 2px solid #ff9900; }
+        .sidebar-header { padding: 20px; background: #131921; text-align: center; }
+        .sidebar-content { flex: 1; padding: 20px; overflow-y: auto; display: flex; flex-direction: column; gap: 15px; }
+        #map { flex: 1; height: 100vh; }
+        .btn { padding: 15px; border: none; border-radius: 6px; font-weight: bold; cursor: pointer; font-size: 14px; transition: 0.2s; width: 100%; }
+        .btn-fetch { background: #37475a; color: white; }
+        .btn-link { background: #ff9900; color: white; margin-top: 10px; }
+        .btn-go-live { background: #00a8e1; color: white; display: none; }
+        .btn-stop { background: #cc0000; color: white; display: none; }
+        .order-card { background: white; color: #333; padding: 12px; border-radius: 6px; margin-top: 10px; border-left: 5px solid #ff9900; }
+        .status-dot { height: 10px; width: 10px; background-color: #555; border-radius: 50%; display: inline-block; margin-right: 5px; }
+        .status-active { background-color: #00ff00; box-shadow: 0 0 8px #00ff00; }
     </style>
 </head>
 <body>
 
-<div id="map"></div>
-
-<div class="control-panel">
-    <div class="mission-card">
-        <div style="font-size: 12px; color: #ff9900; text-transform: uppercase;">Active Mission</div>
-        <div id="mission-status" style="font-size: 18px; margin-top: 5px;">Waiting for Client Order...</div>
+<div class="sidebar">
+    <div class="sidebar-header">
+        <h2 style="color: #ff9900; margin: 0;">RIDER PRO</h2>
+        <div style="margin-top: 10px; font-size: 13px;">
+            <span id="dot" class="status-dot"></span> <span id="status-text">OFFLINE</span>
+        </div>
     </div>
-
-    <button class="btn-simulate" onclick="toggleSimulation()">📍 Change My Location</button>
-    <div id="status-text">Click anywhere on the map to move the rider.</div>
+    
+    <div class="sidebar-content">
+        <button id="fetchBtn" class="btn btn-fetch" onclick="fetchOrders()">🔍 GET AVAILABLE ORDERS</button>
+        <div id="order-list"></div>
+        
+        <hr style="border: 0.5px solid #37475a; margin: 10px 0;">
+        
+        <button id="goLiveBtn" class="btn btn-go-live" onclick="startBroadcast()">📡 GO LIVE (START TRACKING)</button>
+        <button id="stopLiveBtn" class="btn btn-stop" onclick="stopBroadcast()">🛑 STOP TRACKING</button>
+    </div>
 </div>
 
+<div id="map"></div>
+
 <script>
-    // --- SETTINGS ---
-    const API_KEY = "v1.public.eyJqdGkiOiI5ODhmMzBiNi1hYWFjLTRlMmEtOTY0My0wYTgwMmRlZGM1MDkifYr1nFD6LeDRmEuYwAHCT1BCu-cwEaqnjVJ53ocPhRObx9Tk85tar2QpErtuPLdSfruFMMSoMYHxvnKVdCVpZDjSqGpsFGf97OXfY9qmQypPo9DOQOWlMcVWjLB2vOf94Rubo-fV1-11zGEcyaYyORTjBjfKBqOqyGb7aM_96BvTwnGIoJADgbtcqW1BtupSRTdxCv3PZYOKX-J2InUhT70c_jU5zWjui8XsFD1CzKeA-My0Bm-0hWho55XMB0sOdg9lmtAsOi0g6Kdsh4avm_a1jqm5ZF4qU3PevoFe_wYinkF-eNkW9kQIKRDpzKNmQcAYUB2fzr8ijnXShy7pZV8.ZWU0ZWIzMTktMWRhNi00Mzg0LTllMzYtNzlmMDU3MjRmYTkx";
-    const LAMBDA_URL = "https://35amoftvv8.execute-api.us-east-1.amazonaws.com/calculate";
+    const CONFIG = {
+        apiKey: "v1.public.eyJqdGkiOiI5ODhmMzBiNi1hYWFjLTRlMmEtOTY0My0wYTgwMmRlZGM1MDkifYr1nFD6LeDRmEuYwAHCT1BCu-cwEaqnjVJ53ocPhRObx9Tk85tar2QpErtuPLdSfruFMMSoMYHxvnKVdCVpZDjSqGpsFGf97OXfY9qmQypPo9DOQOWlMcVWjLB2vOf94Rubo-fV1-11zGEcyaYyORTjBjfKBqOqyGb7aM_96BvTwnGIoJADgbtcqW1BtupSRTdxCv3PZYOKX-J2InUhT70c_jU5zWjui8XsFD1CzKeA-My0Bm-0hWho55XMB0sOdg9lmtAsOi0g6Kdsh4avm_a1jqm5ZF4qU3PevoFe_wYinkF-eNkW9kQIKRDpzKNmQcAYUB2fzr8ijnXShy7pZV8.ZWU0ZWIzMTktMWRhNi00Mzg0LTllMzYtNzlmMDU3MjRmYTkx",
+        region: "us-east-1",
+        apiUrl: "https://2xtdrxfglh.execute-api.us-east-1.amazonaws.com"
+    };
 
     const map = new maplibregl.Map({
         container: 'map',
-        style: `https://maps.geo.us-east-1.amazonaws.com/v2/styles/Standard/descriptor?key=${API_KEY}`,
+        style: `https://maps.geo.${CONFIG.region}.amazonaws.com/v2/styles/Standard/descriptor?key=${CONFIG.apiKey}`,
         center: [36.8219, -1.2921],
-        zoom: 14
+        zoom: 13
     });
 
-    let currentPos = [36.8219, -1.2921];
-    const riderMarker = new maplibregl.Marker({ color: "#007bff" }).setLngLat(currentPos).addTo(map);
-    const pickupMarker = new maplibregl.Marker({ color: "#28a745" }).setLngLat([0,0]).addTo(map);
+    const riderMarker = new maplibregl.Marker({ color: "#ff9900" }).setLngLat([36.8219, -1.2921]).addTo(map);
+    let pickupMarker, dropoffMarker;
+    let watchId = null;
+    let activeOrderId = "STANDBY";
 
-    // --- SIMULATION LOGIC ---
-    // When the rider clicks the map, we update their location immediately
-    map.on('click', (e) => {
-        const newCoords = [e.lngLat.lng, e.lngLat.lat];
-        updateRiderLocation(newCoords);
-    });
-
-    async function updateRiderLocation(coords) {
-        currentPos = coords;
-        riderMarker.setLngLat(coords);
-        
-        document.getElementById('status-text').innerText = "Syncing with AWS...";
-
+    async function fetchOrders() {
+        const list = document.getElementById('order-list');
+        list.innerHTML = "<p>Loading...</p>";
         try {
-            const res = await fetch(LAMBDA_URL, {
+            const res = await fetch(`${CONFIG.apiUrl}/rider/orders?role=rider`);
+            const orders = await res.json();
+            list.innerHTML = "";
+            orders.forEach(order => {
+                const card = document.createElement('div');
+                card.className = 'order-card';
+                card.innerHTML = `
+                    <strong>Order #${order.OrderId.slice(-5)}</strong><br>
+                    <span>Price: KES ${order.Price}</span><br>
+                    <button class="btn btn-link" onclick="linkThisOrder('${order.OrderId}', ${JSON.stringify(order.Origin)}, ${JSON.stringify(order.Destination)})">LINK & VIEW ROUTE</button>
+                `;
+                list.appendChild(card);
+            });
+        } catch (e) { list.innerHTML = "Error fetching orders."; }
+    }
+
+    async function linkThisOrder(orderId, origin, destination) {
+        // 1. Update status in DB via the Universal Lambda
+        try {
+            const res = await fetch(`${CONFIG.apiUrl}/rider/orders`, {
                 method: 'POST',
-                body: JSON.stringify({
-                    action: 'rider_sync',
-                    riderId: 'Rider-1',
-                    position: coords
-                })
+                body: JSON.stringify({ orderId: orderId, riderId: "RIDER_01" })
             });
-            const data = await res.json();
-
-            // If an order exists in DB, show the pickup point on rider's map
-            if (data.order && data.order.PickUpCoords) {
-                document.getElementById('mission-status').innerText = "Heading to Pick-up point";
-                pickupMarker.setLngLat(data.order.PickUpCoords);
+            
+            if (res.ok) {
+                activeOrderId = orderId;
+                alert("Linked! Now showing Pickup and Drop-off.");
                 
-                // Draw a simple line to the target
-                drawDirectionLine(coords, data.order.PickUpCoords);
+                // 2. Show coordinates on map
+                if (pickupMarker) pickupMarker.remove();
+                if (dropoffMarker) dropoffMarker.remove();
+
+                pickupMarker = new maplibregl.Marker({ color: "#28a745" }).setLngLat(origin).addTo(map);
+                dropoffMarker = new maplibregl.Marker({ color: "#dc3545" }).setLngLat(destination).addTo(map);
+                
+                // 3. Adjust UI
+                document.getElementById('status-text').innerText = "LINKED: #" + orderId.slice(-5);
+                document.getElementById('goLiveBtn').style.display = 'block';
+                document.getElementById('order-list').innerHTML = "<p style='color:lime'>Order Accepted!</p>";
+
+                // Zoom to fit the route
+                const bounds = new maplibregl.LngLatBounds().extend(origin).extend(destination);
+                map.fitBounds(bounds, { padding: 50 });
             }
-
-            document.getElementById('status-text').innerText = "✅ Location Synced. Client can see you.";
-        } catch (err) {
-            document.getElementById('status-text').innerText = "⚠️ Sync Error. Check Lambda.";
-        }
+        } catch (e) { alert("Error linking order."); }
     }
 
-    function drawDirectionLine(start, end) {
-        const geojson = {
-            'type': 'Feature',
-            'geometry': { 'type': 'LineString', 'coordinates': [start, end] }
-        };
-        if (map.getSource('mission-path')) {
-            map.getSource('mission-path').setData(geojson);
-        } else {
-            map.addSource('mission-path', { 'type': 'geojson', 'data': geojson });
-            map.addLayer({
-                'id': 'mission-path-layer',
-                'type': 'line',
-                'source': 'mission-path',
-                'paint': { 'line-color': '#ff9900', 'line-width': 3, 'line-dasharray': [2, 2] }
-            });
-        }
+    function startBroadcast() {
+        if (!navigator.geolocation) return alert("Enable GPS");
+        
+        document.getElementById('goLiveBtn').style.display = 'none';
+        document.getElementById('stopLiveBtn').style.display = 'block';
+        document.getElementById('dot').classList.add('status-active');
+        document.getElementById('status-text').innerText = "LIVE & BROADCASTING";
+
+        watchId = navigator.geolocation.watchPosition(async (pos) => {
+            const { longitude, latitude } = pos.coords;
+            
+            // Move marker on rider map
+            riderMarker.setLngLat([longitude, latitude]);
+
+            // BROADCAST TO DB
+            try {
+                const response = await fetch(`${CONFIG.apiUrl}/rider/update`, {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({
+                        orderId: activeOrderId,
+                        riderId: "RIDER_01",
+                        lng: longitude,
+                        lat: latitude
+                    })
+                });
+                console.log("Broadcast status:", response.status);
+            } catch (err) {
+                console.error("Broadcast failed:", err);
+            }
+        }, (err) => console.error(err), { enableHighAccuracy: true });
     }
 
-    // Auto-sync every 10 seconds even if not clicking
-    setInterval(() => {
-        updateRiderLocation(currentPos);
-    }, 10000);
-
+    function stopBroadcast() {
+        if (watchId) navigator.geolocation.clearWatch(watchId);
+        location.reload(); 
+    }
 </script>
 </body>
 </html>

@@ -1,0 +1,146 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <title>Errand App - Client Dashboard</title>
+    <link href="https://unpkg.com/maplibre-gl@3.x/dist/maplibre-gl.css" rel="stylesheet" />
+    <script src="https://unpkg.com/maplibre-gl@3.x/dist/maplibre-gl.js"></script>
+    <style>
+        body { margin: 0; padding: 0; font-family: 'Segoe UI', sans-serif; display: flex; flex-direction: column; height: 100vh; }
+        #map { flex-grow: 1; width: 100%; }
+        .dashboard { padding: 20px; background: #232f3e; color: white; display: flex; justify-content: space-around; align-items: center; box-shadow: 0 -5px 15px rgba(0,0,0,0.3); z-index: 10; }
+        .stat { text-align: center; }
+        .stat-val { font-size: 22px; font-weight: bold; color: #ff9900; }
+        .stat-label { font-size: 10px; text-transform: uppercase; color: #aaa; }
+        button { padding: 12px 30px; background: #ff9900; color: white; border: none; border-radius: 5px; font-weight: bold; cursor: pointer; }
+        button:hover { background: #e68a00; }
+        #instruction { position: absolute; top: 15px; left: 50%; transform: translateX(-50%); background: white; padding: 10px 20px; border-radius: 20px; font-weight: bold; z-index: 5; box-shadow: 0 2px 10px rgba(0,0,0,0.2); color: #333; }
+    </style>
+</head>
+<body>
+
+<div id="instruction">📍 Click to set <b>Pick-up Location</b></div>
+<div id="map"></div>
+
+<div class="dashboard">
+    <div class="stat">
+        <div id="dist-val" class="stat-val">0.0 km</div>
+        <div class="stat-label">Distance</div>
+    </div>
+    <div class="stat">
+        <div id="price-val" class="stat-val">KES 0</div>
+        <div class="stat-label">Est. Price</div>
+    </div>
+    <button onclick="confirmOrder()">Confirm Order</button>
+</div>
+
+<script>
+    // 1. CONFIGURATION
+    const apiKey = "v1.public.eyJqdGkiOiI5ODhmMzBiNi1hYWFjLTRlMmEtOTY0My0wYTgwMmRlZGM1MDkifYr1nFD6LeDRmEuYwAHCT1BCu-cwEaqnjVJ53ocPhRObx9Tk85tar2QpErtuPLdSfruFMMSoMYHxvnKVdCVpZDjSqGpsFGf97OXfY9qmQypPo9DOQOWlMcVWjLB2vOf94Rubo-fV1-11zGEcyaYyORTjBjfKBqOqyGb7aM_96BvTwnGIoJADgbtcqW1BtupSRTdxCv3PZYOKX-J2InUhT70c_jU5zWjui8XsFD1CzKeA-My0Bm-0hWho55XMB0sOdg9lmtAsOi0g6Kdsh4avm_a1jqm5ZF4qU3PevoFe_wYinkF-eNkW9kQIKRDpzKNmQcAYUB2fzr8ijnXShy7pZV8.ZWU0ZWIzMTktMWRhNi00Mzg0LTllMzYtNzlmMDU3MjRmYTkx";
+    const apiGatewayUrl = "https://35amoftvv8.execute-api.us-east-1.amazonaws.com/calculate";
+    const region = "us-east-1"; 
+
+    // 2. INITIALIZE MAP (V2 URL Structure)
+    const map = new maplibregl.Map({
+        container: 'map',
+        style: `https://maps.geo.${region}.amazonaws.com/v2/styles/Standard/descriptor?key=${apiKey}`,
+        center: [36.8219, -1.2921], // Nairobi
+        zoom: 12
+    });
+
+    let points = [];
+    let markers = [];
+
+    // 3. MAP CLICK LOGIC
+    map.on('click', async (e) => {
+        if (points.length >= 2) resetMap();
+
+        const color = points.length === 0 ? "#28a745" : "#dc3545";
+        const marker = new maplibregl.Marker({ color }).setLngLat(e.lngLat).addTo(map);
+        
+        markers.push(marker);
+        points.push([e.lngLat.lng, e.lngLat.lat]);
+
+        if (points.length === 1) {
+            document.getElementById('instruction').innerHTML = "🏁 Now set <b>Drop-off Location</b>";
+        } else {
+            document.getElementById('instruction').innerHTML = "⏳ Calculating road route...";
+            await callBackend();
+        }
+    });
+
+    // 4. CALL BACKEND
+    async function callBackend() {
+        try {
+            const response = await fetch(apiGatewayUrl, {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ Origin: points[0], Destination: points[1] })
+            });
+            
+            const data = await response.json();
+            
+            if (data.error || !data.route) {
+                console.error("Backend Error:", data.error);
+                document.getElementById('instruction').innerHTML = "⚠️ Road not found - snapping to straight line";
+                // Even if road route fails, we draw the straight line returned in data.route
+                drawRoute(data.route || [points[0], points[1]]);
+            } else {
+                document.getElementById('dist-val').innerText = data.distance + " km";
+                document.getElementById('price-val').innerText = "KES " + data.price;
+                document.getElementById('instruction').innerHTML = "✅ Route Calculated";
+                drawRoute(data.route);
+            }
+        } catch (err) {
+            console.error("Fetch Error:", err);
+            document.getElementById('instruction').innerHTML = "⚠️ Server connection failed";
+        }
+    }
+
+    // 5. DRAW CURVED ROAD ROUTE
+    function drawRoute(coordinates) {
+        // If source already exists, update it; otherwise, add it.
+        if (map.getSource('route')) {
+            map.getSource('route').setData({
+                'type': 'Feature',
+                'geometry': { 'type': 'LineString', 'coordinates': coordinates }
+            });
+        } else {
+            map.addSource('route', {
+                'type': 'geojson',
+                'data': { 'type': 'Feature', 'geometry': { 'type': 'LineString', 'coordinates': coordinates } }
+            });
+            map.addLayer({
+                'id': 'route-layer', 
+                'type': 'line', 
+                'source': 'route',
+                'layout': { 'line-join': 'round', 'line-cap': 'round' },
+                'paint': { 'line-color': '#ff9900', 'line-width': 6 }
+            });
+        }
+        
+        // Zoom to fit the route
+        const bounds = coordinates.reduce((acc, coord) => acc.extend(coord), new maplibregl.LngLatBounds(coordinates[0], coordinates[0]));
+        map.fitBounds(bounds, { padding: 70 });
+    }
+
+    function resetMap() {
+        points = [];
+        markers.forEach(m => m.remove());
+        markers = [];
+        document.getElementById('dist-val').innerText = "0.0 km";
+        document.getElementById('price-val').innerText = "KES 0";
+        if (map.getSource('route')) {
+            map.getSource('route').setData({ 'type': 'Feature', 'geometry': { 'type': 'LineString', 'coordinates': [] } });
+        }
+    }
+
+    function confirmOrder() {
+        if (points.length < 2) {
+            alert("Please select pick-up and drop-off points first!");
+            return;
+        }
+        alert("Order confirmed! Your rider is being dispatched.");
+    }
+</script>
+</body>
+</html>

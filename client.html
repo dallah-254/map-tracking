@@ -3,198 +3,1486 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Client Master Dashboard</title>
-    <link href="https://unpkg.com/maplibre-gl@3.x/dist/maplibre-gl.css" rel="stylesheet" />
-    <script src="https://unpkg.com/maplibre-gl@3.x/dist/maplibre-gl.js"></script>
+    <title>Delivery Tracking System - Client</title>
+    <link rel="stylesheet" href="https://unpkg.com/maplibre-gl@3.6.0/dist/maplibre-gl.css" />
     <style>
-        :root { --amazon-navy: #232f3e; --amazon-orange: #ff9900; --sidebar-width: 380px; }
-        body { margin: 0; padding: 0; font-family: 'Segoe UI', sans-serif; display: flex; height: 100vh; overflow: hidden; }
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
 
-        /* Sidebar Styling */
-        .sidebar { width: var(--sidebar-width); background: var(--amazon-navy); color: white; display: flex; flex-direction: column; z-index: 20; }
-        .sidebar-header { padding: 20px; background: #131921; border-bottom: 2px solid var(--amazon-orange); }
-        .sidebar-content { flex: 1; padding: 20px; overflow-y: auto; }
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Oxygen, Ubuntu, sans-serif;
+            height: 100vh;
+            overflow: hidden;
+            background: #f8f9fa;
+        }
 
-        /* Map */
-        #map { flex: 1; position: relative; background: #eee; }
+        .app-container {
+            display: flex;
+            height: 100vh;
+        }
 
-        /* UI Components */
-        .stat-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; margin-bottom: 15px; }
-        .stat-item { background: #37475a; padding: 10px; border-radius: 5px; text-align: center; }
-        .stat-val { display: block; font-size: 18px; font-weight: bold; color: var(--amazon-orange); }
-        .stat-lab { font-size: 10px; color: #ccc; }
+        /* Map Container */
+        .map-container {
+            flex: 1;
+            position: relative;
+        }
 
-        button { width: 100%; padding: 12px; border: none; border-radius: 5px; font-weight: bold; cursor: pointer; transition: 0.2s; margin-bottom: 10px; }
-        .btn-confirm { background: var(--amazon-orange); color: white; }
-        .btn-track { background: #00a8e1; color: white; margin-top: 8px; font-size: 12px; }
-        button:disabled { opacity: 0.5; cursor: not-allowed; }
+        #map {
+            width: 100%;
+            height: 100%;
+        }
 
-        /* Order Cards */
-        .order-card { background: white; color: #333; padding: 15px; border-radius: 8px; margin-bottom: 12px; border-left: 5px solid #888; transition: 0.3s; }
-        .order-card.active { border-left-color: #28a745; background: #f0fff4; }
-        .order-card h4 { margin: 0; display: flex; justify-content: space-between; align-items: center; font-size: 14px; }
-        
-        .status-pill { font-size: 10px; padding: 3px 8px; border-radius: 12px; color: white; background: #777; text-transform: uppercase; }
-        .pill-active { background: #28a745; animation: pulse-green 2s infinite; }
-        
-        @keyframes pulse-green { 0% { opacity: 1; } 50% { opacity: 0.6; } 100% { opacity: 1; } }
+        /* Sidebar */
+        .sidebar {
+            width: 450px;
+            background: white;
+            border-left: 1px solid #e0e0e0;
+            display: flex;
+            flex-direction: column;
+            overflow: hidden;
+        }
 
-        #tracker-badge { position: absolute; top: 20px; right: 20px; background: white; padding: 10px 20px; border-radius: 50px; display: none; box-shadow: 0 4px 15px rgba(0,0,0,0.2); font-weight: bold; z-index: 100; color: #232f3e; }
+        .sidebar-header {
+            padding: 20px;
+            background: linear-gradient(135deg, #1a73e8 0%, #0d47a1 100%);
+            color: white;
+        }
+
+        .sidebar-header h1 {
+            font-size: 1.5rem;
+            margin-bottom: 10px;
+        }
+
+        .sidebar-content {
+            flex: 1;
+            overflow-y: auto;
+            padding: 20px;
+        }
+
+        /* Form Styles */
+        .form-section {
+            background: white;
+            border-radius: 12px;
+            padding: 20px;
+            margin-bottom: 20px;
+            box-shadow: 0 2px 8px rgba(0,0,0,0.08);
+            border: 1px solid #eaeaea;
+        }
+
+        .form-section h2 {
+            color: #1a73e8;
+            margin-bottom: 20px;
+            font-size: 1.2rem;
+            border-bottom: 2px solid #e8f0fe;
+            padding-bottom: 10px;
+        }
+
+        .form-group {
+            margin-bottom: 16px;
+        }
+
+        label {
+            display: block;
+            margin-bottom: 6px;
+            color: #5f6368;
+            font-weight: 500;
+            font-size: 0.9rem;
+        }
+
+        input, textarea, select {
+            width: 100%;
+            padding: 12px;
+            border: 1px solid #dadce0;
+            border-radius: 8px;
+            font-size: 0.95rem;
+            transition: all 0.2s;
+        }
+
+        input:focus, textarea:focus, select:focus {
+            outline: none;
+            border-color: #1a73e8;
+            box-shadow: 0 0 0 2px rgba(26,115,232,0.2);
+        }
+
+        textarea {
+            resize: vertical;
+            min-height: 80px;
+        }
+
+        /* Button Styles */
+        .btn {
+            display: inline-flex;
+            align-items: center;
+            justify-content: center;
+            padding: 12px 24px;
+            border: none;
+            border-radius: 8px;
+            font-size: 0.95rem;
+            font-weight: 600;
+            cursor: pointer;
+            transition: all 0.2s;
+            gap: 8px;
+        }
+
+        .btn-primary {
+            background: #1a73e8;
+            color: white;
+        }
+
+        .btn-primary:hover {
+            background: #0d62d9;
+            transform: translateY(-1px);
+            box-shadow: 0 4px 12px rgba(26,115,232,0.3);
+        }
+
+        .btn-secondary {
+            background: #f1f3f4;
+            color: #5f6368;
+            border: 1px solid #dadce0;
+        }
+
+        .btn-secondary:hover {
+            background: #e8eaed;
+        }
+
+        .btn-success {
+            background: #34a853;
+            color: white;
+        }
+
+        .btn-success:hover {
+            background: #2e8b47;
+            transform: translateY(-1px);
+        }
+
+        .btn:disabled {
+            opacity: 0.6;
+            cursor: not-allowed;
+            transform: none !important;
+        }
+
+        .btn-group {
+            display: flex;
+            gap: 10px;
+            margin-top: 10px;
+        }
+
+        /* Map Controls */
+        .map-controls {
+            position: absolute;
+            top: 20px;
+            left: 20px;
+            background: white;
+            border-radius: 12px;
+            padding: 16px;
+            box-shadow: 0 4px 12px rgba(0,0,0,0.15);
+            width: 300px;
+            z-index: 1000;
+        }
+
+        .map-controls h3 {
+            color: #1a73e8;
+            margin-bottom: 15px;
+            font-size: 1rem;
+        }
+
+        .legend {
+            display: flex;
+            flex-direction: column;
+            gap: 8px;
+        }
+
+        .legend-item {
+            display: flex;
+            align-items: center;
+            gap: 10px;
+        }
+
+        .legend-color {
+            width: 16px;
+            height: 16px;
+            border-radius: 50%;
+        }
+
+        .legend-color.pickup {
+            background: #34a853;
+            border: 2px solid #2e8b47;
+        }
+
+        .legend-color.dropoff {
+            background: #ea4335;
+            border: 2px solid #d33426;
+        }
+
+        .legend-color.user {
+            background: #4285f4;
+            border: 2px solid #3367d6;
+        }
+
+        .legend-color.rider {
+            background: #fbbc04;
+            border: 2px solid #e6a200;
+        }
+
+        .legend-color.route {
+            width: 30px;
+            height: 4px;
+            background: #1a73e8;
+            border-radius: 2px;
+        }
+
+        /* Order Info */
+        .order-info {
+            background: white;
+            border-radius: 12px;
+            padding: 20px;
+            margin-bottom: 20px;
+            box-shadow: 0 2px 8px rgba(0,0,0,0.08);
+            border: 1px solid #eaeaea;
+            display: none;
+        }
+
+        .order-info.active {
+            display: block;
+        }
+
+        .order-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 15px;
+        }
+
+        .order-id {
+            font-family: 'Courier New', monospace;
+            background: #f8f9fa;
+            padding: 6px 12px;
+            border-radius: 6px;
+            font-size: 0.9rem;
+            font-weight: 600;
+            color: #1a73e8;
+        }
+
+        .status-badge {
+            padding: 6px 16px;
+            border-radius: 20px;
+            font-size: 0.8rem;
+            font-weight: 600;
+        }
+
+        .status-pending { background: #fbbc04; color: #202124; }
+        .status-assigned { background: #4285f4; color: white; }
+        .status-picked_up { background: #34a853; color: white; }
+        .status-in_transit { background: #1a73e8; color: white; }
+        .status-delivered { background: #0d652d; color: white; }
+
+        .order-details {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 12px;
+            margin-top: 15px;
+        }
+
+        .detail-item {
+            background: #f8f9fa;
+            padding: 12px;
+            border-radius: 8px;
+            border: 1px solid #e9ecef;
+        }
+
+        .detail-item h4 {
+            color: #5f6368;
+            font-size: 0.75rem;
+            margin-bottom: 4px;
+            text-transform: uppercase;
+            letter-spacing: 0.5px;
+        }
+
+        .detail-item p {
+            font-weight: 600;
+            color: #202124;
+        }
+
+        /* Tracking Section */
+        .tracking-section {
+            background: white;
+            border-radius: 12px;
+            padding: 20px;
+            margin-top: 20px;
+            box-shadow: 0 2px 8px rgba(0,0,0,0.08);
+            border: 2px solid #34a853;
+            display: none;
+        }
+
+        .tracking-section.active {
+            display: block;
+        }
+
+        .tracking-header {
+            display: flex;
+            align-items: center;
+            gap: 10px;
+            margin-bottom: 20px;
+        }
+
+        .tracking-pulse {
+            width: 12px;
+            height: 12px;
+            border-radius: 50%;
+            background: #34a853;
+            animation: pulse 2s infinite;
+        }
+
+        @keyframes pulse {
+            0% { transform: scale(1); opacity: 1; }
+            50% { transform: scale(1.2); opacity: 0.7; }
+            100% { transform: scale(1); opacity: 1; }
+        }
+
+        .rider-info-card {
+            display: flex;
+            align-items: center;
+            gap: 15px;
+            margin-bottom: 20px;
+            padding: 15px;
+            background: #f8f9fa;
+            border-radius: 10px;
+            border: 1px solid #e9ecef;
+        }
+
+        .rider-avatar {
+            width: 50px;
+            height: 50px;
+            border-radius: 50%;
+            background: #fbbc04;
+            color: white;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-weight: bold;
+            font-size: 20px;
+        }
+
+        .rider-details {
+            flex: 1;
+        }
+
+        .rider-name {
+            font-weight: 700;
+            font-size: 1rem;
+            margin-bottom: 4px;
+        }
+
+        .rider-status {
+            font-size: 0.85rem;
+            color: #34a853;
+            display: flex;
+            align-items: center;
+            gap: 5px;
+        }
+
+        .progress-container {
+            margin-top: 20px;
+        }
+
+        .progress-bar {
+            height: 8px;
+            background: #e8eaed;
+            border-radius: 4px;
+            overflow: hidden;
+            margin-bottom: 8px;
+        }
+
+        .progress-fill {
+            height: 100%;
+            background: #34a853;
+            transition: width 0.3s ease;
+        }
+
+        .progress-labels {
+            display: flex;
+            justify-content: space-between;
+            font-size: 0.85rem;
+            color: #5f6368;
+        }
+
+        .location-grid {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 12px;
+            margin-top: 20px;
+        }
+
+        .location-card {
+            background: #f8f9fa;
+            padding: 15px;
+            border-radius: 8px;
+            border: 1px solid #e9ecef;
+        }
+
+        .location-card h4 {
+            color: #5f6368;
+            font-size: 0.75rem;
+            margin-bottom: 8px;
+            text-transform: uppercase;
+        }
+
+        .location-card p {
+            font-weight: 600;
+            font-family: monospace;
+            font-size: 0.85rem;
+        }
+
+        /* Route Info */
+        .route-info {
+            margin-top: 20px;
+            padding: 15px;
+            background: #e8f0fe;
+            border-radius: 8px;
+            border-left: 4px solid #1a73e8;
+        }
+
+        .route-info h4 {
+            color: #1a73e8;
+            font-size: 0.85rem;
+            margin-bottom: 8px;
+            display: flex;
+            align-items: center;
+            gap: 5px;
+        }
+
+        /* API Status */
+        .api-status {
+            display: flex;
+            align-items: center;
+            gap: 8px;
+            margin-top: 10px;
+            padding: 12px;
+            border-radius: 8px;
+            font-size: 0.9rem;
+        }
+
+        .api-status.connected {
+            background: #e6f4ea;
+            color: #0d652d;
+            border: 1px solid #34a853;
+        }
+
+        .api-status.disconnected {
+            background: #fce8e6;
+            color: #c5221f;
+            border: 1px solid #ea4335;
+        }
+
+        .status-indicator {
+            width: 8px;
+            height: 8px;
+            border-radius: 50%;
+        }
+
+        .connected .status-indicator {
+            background: #34a853;
+            animation: pulse 2s infinite;
+        }
+
+        .disconnected .status-indicator {
+            background: #ea4335;
+        }
+
+        /* Toast Notifications */
+        .toast {
+            position: fixed;
+            bottom: 20px;
+            right: 20px;
+            background: #202124;
+            color: white;
+            padding: 14px 24px;
+            border-radius: 8px;
+            box-shadow: 0 8px 24px rgba(0,0,0,0.15);
+            display: flex;
+            align-items: center;
+            gap: 12px;
+            z-index: 10000;
+            transform: translateX(400px);
+            opacity: 0;
+            transition: all 0.3s ease;
+            max-width: 400px;
+        }
+
+        .toast.show {
+            transform: translateX(0);
+            opacity: 1;
+        }
+
+        .toast-success { background: #0d652d; }
+        .toast-error { background: #c5221f; }
+        .toast-info { background: #1a73e8; }
+
+        /* Responsive */
+        @media (max-width: 1024px) {
+            .sidebar { width: 400px; }
+        }
+
+        @media (max-width: 768px) {
+            .app-container { flex-direction: column; }
+            .sidebar { width: 100%; height: 50vh; }
+            .map-controls { width: calc(100% - 40px); }
+        }
     </style>
 </head>
 <body>
-
-<div class="sidebar">
-    <div class="sidebar-header">
-        <h2 style="margin:0; color:var(--amazon-orange);">ERRAND PRO</h2>
-        <p style="font-size:12px; color:#888;">Customer Portal</p>
-    </div>
-
-    <div class="sidebar-content">
-        <div id="new-order-ui">
-            <p id="instruct" style="color:var(--amazon-orange); font-size: 13px;">📍 Click map for Pickup & Drop-off</p>
-            <div class="stat-grid">
-                <div class="stat-item"><span id="dist-val" class="stat-val">0.00</span><span class="stat-lab">KM</span></div>
-                <div class="stat-item"><span id="price-val" class="stat-val">0</span><span class="stat-lab">KES</span></div>
+    <div class="app-container">
+        <!-- Map Container -->
+        <div class="map-container">
+            <div id="map"></div>
+            
+            <!-- Map Controls -->
+            <div class="map-controls">
+                <h3>📍 Map Legend</h3>
+                <div class="legend">
+                    <div class="legend-item">
+                        <div class="legend-color pickup"></div>
+                        <span>Pickup Location</span>
+                    </div>
+                    <div class="legend-item">
+                        <div class="legend-color dropoff"></div>
+                        <span>Dropoff Location</span>
+                    </div>
+                    <div class="legend-item">
+                        <div class="legend-color user"></div>
+                        <span>Your Location</span>
+                    </div>
+                    <div class="legend-item">
+                        <div class="legend-color rider"></div>
+                        <span>Live Rider Location</span>
+                    </div>
+                    <div class="legend-item">
+                        <div class="legend-color route"></div>
+                        <span>Delivery Route</span>
+                    </div>
+                </div>
+                <div style="margin-top: 15px; padding-top: 15px; border-top: 1px solid #eee;">
+                    <div style="display: flex; align-items: center; gap: 8px;">
+                        <div class="tracking-pulse" style="width: 10px; height: 10px;"></div>
+                        <span style="font-size: 0.85rem; color: #5f6368;">Live tracking updates every 5 seconds</span>
+                    </div>
+                </div>
             </div>
-            <button id="confirm-btn" class="btn-confirm" onclick="confirmOrder()" disabled>PLACE ORDER</button>
         </div>
 
-        <hr style="border:0.5px solid #37475a; margin: 20px 0;">
-        
-        <h3>Active Errands</h3>
-        <div id="order-history">
-            <p style="color:#888; font-size:12px; text-align:center;">No orders yet.</p>
+        <!-- Sidebar -->
+        <div class="sidebar">
+            <div class="sidebar-header">
+                <h1>📦 Track Your Delivery</h1>
+                <p style="opacity: 0.9; margin-top: 5px;">Create orders and track riders in real-time</p>
+            </div>
+
+            <div class="sidebar-content">
+                <!-- Order Creation Form -->
+                <div class="form-section" id="orderForm">
+                    <h2>📝 Create New Order</h2>
+                    <div class="form-group">
+                        <label for="customerName">Your Name *</label>
+                        <input type="text" id="customerName" placeholder="Enter your full name" required>
+                    </div>
+                    <div class="form-group">
+                        <label for="customerPhone">Phone Number *</label>
+                        <input type="tel" id="customerPhone" placeholder="Enter your phone number" required>
+                    </div>
+                    <div class="form-group">
+                        <label>📍 Pickup Location</label>
+                        <div id="pickupCoords" style="font-size: 0.85rem; color: #34a853; margin-bottom: 8px; font-weight: 500;">
+                            Click on map to set pickup point
+                        </div>
+                        <input type="text" id="pickupAddress" placeholder="Address will appear here" readonly>
+                    </div>
+                    <div class="form-group">
+                        <label>📌 Dropoff Location</label>
+                        <div id="dropoffCoords" style="font-size: 0.85rem; color: #ea4335; margin-bottom: 8px; font-weight: 500;">
+                            Click on map to set dropoff point
+                        </div>
+                        <input type="text" id="dropoffAddress" placeholder="Address will appear here" readonly>
+                    </div>
+                    <div class="form-group">
+                        <label for="notes">📝 Special Instructions</label>
+                        <textarea id="notes" placeholder="Any special delivery instructions..."></textarea>
+                    </div>
+                    <div class="btn-group">
+                        <button class="btn btn-primary" onclick="createOrder()" id="createOrderBtn">
+                            📨 Create Order
+                        </button>
+                        <button class="btn btn-secondary" onclick="clearMarkers()">
+                            🗑️ Clear
+                        </button>
+                    </div>
+                </div>
+
+                <!-- Order Information -->
+                <div class="order-info" id="orderInfo">
+                    <div class="order-header">
+                        <div>
+                            <h3 style="margin-bottom: 8px;">Your Order</h3>
+                            <span class="order-id" id="displayOrderId">ORD-000000</span>
+                        </div>
+                        <span class="status-badge status-pending" id="displayStatus">Pending</span>
+                    </div>
+                    
+                    <div class="order-details">
+                        <div class="detail-item">
+                            <h4>Tracking #</h4>
+                            <p id="displayTracking" style="font-family: monospace;">TRK-000000</p>
+                        </div>
+                        <div class="detail-item">
+                            <h4>Created</h4>
+                            <p id="displayCreated">-</p>
+                        </div>
+                        <div class="detail-item">
+                            <h4>Customer</h4>
+                            <p id="displayCustomer">-</p>
+                        </div>
+                        <div class="detail-item">
+                            <h4>Phone</h4>
+                            <p id="displayPhone">-</p>
+                        </div>
+                    </div>
+                    
+                    <div style="margin-top: 15px;">
+                        <button class="btn btn-success" onclick="trackOrderFromInfo()" style="width: 100%;" id="trackNowBtn">
+                            🔍 Track This Order
+                        </button>
+                    </div>
+                </div>
+
+                <!-- Live Tracking Section -->
+                <div class="tracking-section" id="trackingSection">
+                    <div class="tracking-header">
+                        <div class="tracking-pulse"></div>
+                        <h3 style="color: #34a853;">🚴 Live Tracking Active</h3>
+                    </div>
+                    
+                    <div class="rider-info-card">
+                        <div class="rider-avatar" id="riderAvatar">R</div>
+                        <div class="rider-details">
+                            <div class="rider-name" id="riderName">Rider Not Assigned</div>
+                            <div class="rider-status" id="riderStatus">
+                                <span style="width: 8px; height: 8px; background: #fbbc04; border-radius: 50%; display: inline-block;"></span>
+                                Waiting for assignment
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- Route Information - NEW -->
+                    <div class="route-info" id="routeInfo" style="display: none;">
+                        <h4>🛣️ Delivery Route</h4>
+                        <div style="display: flex; justify-content: space-between; margin-top: 5px;">
+                            <span style="font-size: 0.85rem;">📍 Pickup → 📌 Dropoff</span>
+                            <span style="font-size: 0.85rem; font-weight: 600;" id="routeDistance">-</span>
+                        </div>
+                    </div>
+
+                    <div class="progress-container">
+                        <div style="display: flex; justify-content: space-between; margin-bottom: 5px;">
+                            <span style="font-size: 0.8rem; color: #5f6368;">Delivery Progress</span>
+                            <span style="font-size: 0.8rem; font-weight: 600;" id="progressPercentage">0%</span>
+                        </div>
+                        <div class="progress-bar">
+                            <div class="progress-fill" id="progressFill" style="width: 0%"></div>
+                        </div>
+                        <div class="progress-labels">
+                            <span>📍 Pickup</span>
+                            <span>🏁 Dropoff</span>
+                        </div>
+                    </div>
+
+                    <div class="location-grid">
+                        <div class="location-card">
+                            <h4>📍 Rider Location</h4>
+                            <p id="riderLocation">-</p>
+                            <small style="color: #6c757d;" id="lastUpdated">-</small>
+                        </div>
+                        <div class="location-card">
+                            <h4>🎯 Destination</h4>
+                            <p id="destinationAddress">-</p>
+                            <small style="color: #6c757d;" id="distanceToDropoff">-</small>
+                        </div>
+                        <div class="location-card" style="grid-column: span 2;">
+                            <h4>⏱️ Estimated Arrival</h4>
+                            <p style="font-size: 1.1rem; color: #1a73e8;" id="estimatedArrival">-</p>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Track Existing Order -->
+                <div class="form-section" id="trackForm">
+                    <h2>🔍 Track Existing Order</h2>
+                    <div class="form-group">
+                        <label for="trackOrderId">Enter Order ID</label>
+                        <input type="text" id="trackOrderId" placeholder="e.g. ORD-123456789-abc123">
+                    </div>
+                    <div class="btn-group">
+                        <button class="btn btn-primary" onclick="trackOrder()">
+                            🔎 Track Order
+                        </button>
+                        <button class="btn btn-secondary" onclick="stopTracking()">
+                            ⏹️ Stop Tracking
+                        </button>
+                    </div>
+                </div>
+
+                <!-- API Status -->
+                <div id="apiStatus" class="api-status disconnected">
+                    <div class="status-indicator"></div>
+                    <span id="apiStatusText">Connecting to services...</span>
+                </div>
+            </div>
         </div>
     </div>
-</div>
 
-<div id="map">
-    <div id="tracker-badge">🛰️ TRACKING RIDER: <span id="active-id"></span></div>
-</div>
+    <!-- Toast Notification -->
+    <div class="toast" id="toast"></div>
 
-<script>
-    const CONFIG = {
-        apiKey: "v1.public.eyJqdGkiOiI5ODhmMzBiNi1hYWFjLTRlMmEtOTY0My0wYTgwMmRlZGM1MDkifYr1nFD6LeDRmEuYwAHCT1BCu-cwEaqnjVJ53ocPhRObx9Tk85tar2QpErtuPLdSfruFMMSoMYHxvnKVdCVpZDjSqGpsFGf97OXfY9qmQypPo9DOQOWlMcVWjLB2vOf94Rubo-fV1-11zGEcyaYyORTjBjfKBqOqyGb7aM_96BvTwnGIoJADgbtcqW1BtupSRTdxCv3PZYOKX-J2InUhT70c_jU5zWjui8XsFD1CzKeA-My0Bm-0hWho55XMB0sOdg9lmtAsOi0g6Kdsh4avm_a1jqm5ZF4qU3PevoFe_wYinkF-eNkW9kQIKRDpzKNmQcAYUB2fzr8ijnXShy7pZV8.ZWU0ZWIzMTktMWRhNi00Mzg0LTllMzYtNzlmMDU3MjRmYTkx",
-        apiUrl: "https://2xtdrxfglh.execute-api.us-east-1.amazonaws.com",
-        region: "us-east-1"
-    };
-
-    const map = new maplibregl.Map({
-        container: 'map',
-        style: `https://maps.geo.${CONFIG.region}.amazonaws.com/v2/styles/Standard/descriptor?key=${CONFIG.apiKey}`,
-        center: [36.8219, -1.2921],
-        zoom: 12
-    });
-
-    let points = [];
-    let markers = [];
-    let riderMarker = new maplibregl.Marker({ color: "#00a8e1" });
-    let trackingLoop = null;
-
-    // 1. PLACE ORDER LOGIC
-    map.on('click', (e) => {
-        if (points.length >= 2) { points = []; markers.forEach(m => m.remove()); markers = []; }
+    <!-- Load Maplibre GL -->
+    <script src="https://unpkg.com/maplibre-gl@3.6.0/dist/maplibre-gl.js"></script>
+    
+    <script>
+        // ==================== CONFIGURATION ====================
+        const MAP_API_KEY = 'v1.public.eyJqdGkiOiJjOWEwNmRmNi0wODgxLTQzM2QtOGMwNi05ZjhmNjVhYTRhMzYifSrvVxxGFJECbaRbhiVx2asiZPsR35Nk1OvudGlWz23aZiLfNXXypiMori-FaCLerKmpUJD7JH9Z6gEBa79sJRSSU7Sccfpj9Ecg5jzqFbIeCRaFtU2T2DlpPfjAc9ijqXYiFReqoAUpXBMsBGvfYJO2f4xjaLJRJnvoEEYyTHxDH2ybm6xZcLy1x7LqtvBMrIVxTXSLH1lcmVPFUAfKXyE1mRpbhF4Nz_hKSgUzVeCgDV4pEKG1JRZWUtvfHXkY34noR_3MD5uH6uEbrMy5IsTkuRLE_AsRQGr8ihDsC42r9czqp4lWobrXdGXFRPqswkscF66yB45y1wdslhsS-_8.NjAyMWJkZWUtMGMyOS00NmRkLThjZTMtODEyOTkzZTUyMTBi';
+        const API_BASE_URL = 'https://kpafwhlv70.execute-api.us-east-2.amazonaws.com/prod';
         
-        const color = points.length === 0 ? "#28a745" : "#dc3545";
-        const marker = new maplibregl.Marker({ color }).setLngLat(e.lngLat).addTo(map);
-        markers.push(marker);
-        points.push([e.lngLat.lng, e.lngLat.lat]);
+        // ==================== GLOBAL VARIABLES ====================
+        let map;
+        let pickupMarker = null;
+        let dropoffMarker = null;
+        let userLocationMarker = null;
+        let riderMarker = null;
+        let routeLayer = null;
+        let currentOrderId = null;
+        let currentOrder = null;
+        let trackingInterval = null;
+        let isSystemInitialized = false;
 
-        if (points.length === 2) {
-            document.getElementById('confirm-btn').disabled = false;
-            getPriceEstimate();
-        }
-    });
+        // ==================== INITIALIZATION ====================
+        window.onload = function() {
+            initializeSystem();
+        };
 
-    async function getPriceEstimate() {
-        const res = await fetch(`${CONFIG.apiUrl}/orders`, {
-            method: 'POST',
-            body: JSON.stringify({ Origin: points[0], Destination: points[1] })
-        });
-        const data = await res.json();
-        document.getElementById('dist-val').innerText = data.distance;
-        document.getElementById('price-val').innerText = data.price;
-    }
-
-    async function confirmOrder() {
-        const btn = document.getElementById('confirm-btn');
-        btn.innerText = "SAVING...";
-        btn.disabled = true;
-
-        await fetch(`${CONFIG.apiUrl}/orders`, {
-            method: 'POST',
-            body: JSON.stringify({ Origin: points[0], Destination: points[1], SaveOrder: true })
-        });
-        
-        alert("Order Placed Successfully!");
-        btn.innerText = "PLACE ORDER";
-        points = []; markers.forEach(m => m.remove()); markers = [];
-        refreshOrders();
-    }
-
-    // 2. FETCH & STATUS SYNC LOGIC
-    async function refreshOrders() {
-        try {
-            // Using ?role=client to get all orders from the Universal Lambda
-            const res = await fetch(`${CONFIG.apiUrl}/rider/orders?role=client`);
-            const orders = await res.json();
-            
-            const listDiv = document.getElementById('order-history');
-            listDiv.innerHTML = "";
-
-            orders.forEach(order => {
-                const isActive = order.Status === "ACTIVE";
-                const card = document.createElement('div');
-                card.className = `order-card ${isActive ? 'active' : ''}`;
+        async function initializeSystem() {
+            try {
+                updateApiStatus('Initializing map...', 'disconnected');
+                await initMap();
                 
-                card.innerHTML = `
-                    <h4>#${order.OrderId.slice(-5)} 
-                        <span class="status-pill ${isActive ? 'pill-active' : ''}">
-                            ${isActive ? 'Errand In Progress' : 'Searching...'}
-                        </span>
-                    </h4>
-                    <p style="margin: 8px 0; font-size: 12px;">Price: <b>KES ${order.Price}</b></p>
-                    ${isActive ? 
-                        `<button class="btn-track" onclick="startLiveTracking('${order.OrderId}')">🛰️ SEE RIDER LOCATION</button>` : 
-                        `<p style="font-size:11px; color:#666;">Waiting for rider to link...</p>`
-                    }
-                `;
-                listDiv.appendChild(card);
-            });
-        } catch (e) { console.error("Sync Error", e); }
-    }
-
-    // 3. LIVE TRACKING LOGIC
-        function startLiveTracking(orderId) {
-            document.getElementById('tracker-badge').style.display = 'block';
-            
-            if (trackingLoop) clearInterval(trackingLoop);
-            
-            trackingLoop = setInterval(async () => {
-                try {
-                    const res = await fetch(`${CONFIG.apiUrl}/track?orderId=${orderId}`);
-                    const data = await res.json();
-                    
-                    // CHECK: Ensure data.riderLocation exists and is an array
-                    if (data.riderLocation && Array.isArray(data.riderLocation)) {
-                        const [lng, lat] = data.riderLocation;
-                        
-                        // Move the blue marker on the client's map
-                        riderMarker.setLngLat([lng, lat]).addTo(map);
-                        
-                        // Optional: Smoothly follow the rider
-                        map.easeTo({ center: [lng, lat] }); 
-                    }
-                } catch (e) {
-                    console.error("Tracking fetch failed", e);
+                const apiConnected = await testApiConnection();
+                
+                if (apiConnected) {
+                    updateApiStatus('✅ Connected to delivery services', 'connected');
+                    isSystemInitialized = true;
+                    showToast('System ready! Create an order or enter tracking ID', 'success');
+                } else {
+                    updateApiStatus('⚠️ Map loaded but API connection failed', 'disconnected');
                 }
-            }, 5000); // Check every 5 seconds
+            } catch (error) {
+                console.error('Init error:', error);
+                updateApiStatus('❌ Initialization failed', 'disconnected');
+                showToast('Failed to initialize: ' + error.message, 'error');
+            }
         }
 
-    // Auto-Sync with DB every 7 seconds to catch Rider "Link" actions
-    setInterval(refreshOrders, 7000);
-    refreshOrders(); // Initial Load
-</script>
+        async function initMap() {
+            try {
+                if (!MAP_API_KEY) throw new Error('Map API Key missing');
+
+                map = new maplibregl.Map({
+                    container: 'map',
+                    style: `https://maps.geo.us-east-2.amazonaws.com/maps/v0/maps/NextGen/style-descriptor?key=${MAP_API_KEY}`,
+                    center: [36.8219, -1.2921],
+                    zoom: 12,
+                    transformRequest: (url) => {
+                        if (url.includes('amazonaws.com')) {
+                            return {
+                                url: url.includes('?') ? 
+                                    `${url}&key=${MAP_API_KEY}` : 
+                                    `${url}?key=${MAP_API_KEY}`
+                            };
+                        }
+                        return { url };
+                    }
+                });
+
+                map.addControl(new maplibregl.NavigationControl(), 'top-right');
+
+                map.on('load', () => {
+                    console.log('Map loaded');
+                    updateApiStatus('Map loaded, connecting to API...', 'disconnected');
+                    getUserLocation();
+                    setupMapClickHandler();
+                });
+
+                map.on('error', (e) => {
+                    if (e.error?.status === 403) {
+                        showToast('Map access denied - check API key', 'error');
+                        updateApiStatus('❌ Map access denied', 'disconnected');
+                    }
+                });
+
+            } catch (error) {
+                console.error('Map init error:', error);
+                throw error;
+            }
+        }
+
+        function getUserLocation() {
+            if (navigator.geolocation) {
+                navigator.geolocation.getCurrentPosition(
+                    (position) => {
+                        const { latitude, longitude } = position.coords;
+                        map.setCenter([longitude, latitude]);
+                        map.setZoom(15);
+
+                        if (userLocationMarker) userLocationMarker.remove();
+                        userLocationMarker = new maplibregl.Marker({ color: '#4285f4' })
+                            .setLngLat([longitude, latitude])
+                            .setPopup(new maplibregl.Popup().setHTML('<b>Your Location</b>'))
+                            .addTo(map);
+                    },
+                    (error) => {
+                        console.warn('Geolocation error:', error);
+                    },
+                    { enableHighAccuracy: true, timeout: 10000 }
+                );
+            }
+        }
+
+        function setupMapClickHandler() {
+            map.on('click', async (e) => {
+                if (!isSystemInitialized) {
+                    showToast('System initializing - please wait', 'info');
+                    return;
+                }
+
+                const { lat, lng } = e.lngLat;
+                
+                if (!pickupMarker) {
+                    await placePickupMarker(lat, lng);
+                } else if (!dropoffMarker) {
+                    await placeDropoffMarker(lat, lng);
+                } else {
+                    if (confirm('Clear existing markers and set new pickup?')) {
+                        clearMarkers();
+                        await placePickupMarker(lat, lng);
+                    }
+                }
+            });
+        }
+
+        async function testApiConnection() {
+            try {
+                const response = await fetch(`${API_BASE_URL}/orders`, {
+                    method: 'GET',
+                    headers: { 'Content-Type': 'application/json' }
+                });
+                return response.ok;
+            } catch (error) {
+                console.error('API test failed:', error);
+                return false;
+            }
+        }
+
+        // ==================== MAP FUNCTIONS ====================
+
+        async function placePickupMarker(lat, lng) {
+            try {
+                if (pickupMarker) pickupMarker.remove();
+
+                pickupMarker = new maplibregl.Marker({ color: '#34a853' })
+                    .setLngLat([lng, lat])
+                    .setPopup(new maplibregl.Popup().setHTML('<b>📍 Pickup Location</b>'))
+                    .addTo(map);
+
+                document.getElementById('pickupCoords').innerHTML = `📍 Pickup: ${lat.toFixed(6)}, ${lng.toFixed(6)}`;
+                await reverseGeocode(lat, lng, 'pickup');
+
+                if (dropoffMarker) await calculateAndDisplayRoute();
+                showToast('Pickup location set', 'success');
+            } catch (error) {
+                console.error('Pickup error:', error);
+                showToast('Failed to set pickup', 'error');
+            }
+        }
+
+        async function placeDropoffMarker(lat, lng) {
+            try {
+                if (dropoffMarker) dropoffMarker.remove();
+
+                dropoffMarker = new maplibregl.Marker({ color: '#ea4335' })
+                    .setLngLat([lng, lat])
+                    .setPopup(new maplibregl.Popup().setHTML('<b>📌 Dropoff Location</b>'))
+                    .addTo(map);
+
+                document.getElementById('dropoffCoords').innerHTML = `📌 Dropoff: ${lat.toFixed(6)}, ${lng.toFixed(6)}`;
+                await reverseGeocode(lat, lng, 'dropoff');
+
+                if (pickupMarker) await calculateAndDisplayRoute();
+                showToast('Dropoff location set', 'success');
+            } catch (error) {
+                console.error('Dropoff error:', error);
+                showToast('Failed to set dropoff', 'error');
+            }
+        }
+
+        function clearMarkers() {
+            if (pickupMarker) { pickupMarker.remove(); pickupMarker = null; }
+            if (dropoffMarker) { dropoffMarker.remove(); dropoffMarker = null; }
+            if (riderMarker) { riderMarker.remove(); riderMarker = null; }
+            if (routeLayer) { 
+                if (map.getLayer('route')) map.removeLayer('route');
+                if (map.getSource('route')) map.removeSource('route');
+                routeLayer = null;
+            }
+
+            document.getElementById('pickupCoords').innerHTML = 'Click on map to set pickup point';
+            document.getElementById('pickupAddress').value = '';
+            document.getElementById('dropoffCoords').innerHTML = 'Click on map to set dropoff point';
+            document.getElementById('dropoffAddress').value = '';
+
+            document.getElementById('orderInfo').classList.remove('active');
+            document.getElementById('trackingSection').classList.remove('active');
+            
+            stopTracking();
+            showToast('Map cleared', 'info');
+        }
+
+        // ==================== ROUTE CALCULATION - CRITICAL FOR CLIENT ====================
+        async function calculateAndDisplayRoute() {
+            if (!pickupMarker || !dropoffMarker) return;
+
+            const pickup = pickupMarker.getLngLat();
+            const dropoff = dropoffMarker.getLngLat();
+
+            try {
+                showToast('Calculating route...', 'info');
+
+                const response = await fetch(`${API_BASE_URL}/maps/route`, {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({
+                        pickup: { latitude: pickup.lat, longitude: pickup.lng },
+                        dropoff: { latitude: dropoff.lat, longitude: dropoff.lng }
+                    })
+                });
+
+                if (!response.ok) throw new Error('Route calculation failed');
+                
+                const data = await response.json();
+                
+                let coordinates = null;
+                if (data.route?.geometry?.LineString) {
+                    coordinates = data.route.geometry.LineString;
+                } else if (data.route?.geometry && Array.isArray(data.route.geometry)) {
+                    coordinates = data.route.geometry;
+                } else if (data.coordinates) {
+                    coordinates = data.coordinates;
+                }
+
+                if (!coordinates || !Array.isArray(coordinates)) {
+                    throw new Error('Invalid route data format');
+                }
+
+                // Draw route on map
+                if (map.getLayer('route')) map.removeLayer('route');
+                if (map.getSource('route')) map.removeSource('route');
+
+                map.addSource('route', {
+                    type: 'geojson',
+                    data: {
+                        type: 'Feature',
+                        geometry: { type: 'LineString', coordinates }
+                    }
+                });
+
+                map.addLayer({
+                    id: 'route',
+                    type: 'line',
+                    source: 'route',
+                    layout: { 'line-join': 'round', 'line-cap': 'round' },
+                    paint: { 
+                        'line-color': '#1a73e8', 
+                        'line-width': 5, 
+                        'line-opacity': 0.8,
+                        'line-dasharray': [2, 1] // Dashed line for client view
+                    }
+                });
+
+                routeLayer = true;
+
+                // Calculate distance
+                const distance = calculateDistance(
+                    pickup.lat, pickup.lng,
+                    dropoff.lat, dropoff.lng
+                );
+                
+                // Store in currentOrder for tracking
+                if (currentOrder) {
+                    currentOrder.route = { coordinates, distance };
+                }
+
+                // Fit bounds
+                const bounds = coordinates.reduce((b, coord) => b.extend(coord), 
+                    new maplibregl.LngLatBounds(coordinates[0], coordinates[0]));
+                map.fitBounds(bounds, { padding: 70, duration: 1000 });
+
+                showToast('Route calculated', 'success');
+
+            } catch (error) {
+                console.error('Route error:', error);
+                showToast('Route calculation failed', 'error');
+            }
+        }
+
+        // Display order route on map (for tracked orders)
+        async function displayOrderRoute(order) {
+            if (!order.pickupLocation || !order.dropoffLocation) return;
+
+            try {
+                const response = await fetch(`${API_BASE_URL}/maps/route`, {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({
+                        pickup: { 
+                            latitude: order.pickupLocation.latitude, 
+                            longitude: order.pickupLocation.longitude 
+                        },
+                        dropoff: { 
+                            latitude: order.dropoffLocation.latitude, 
+                            longitude: order.dropoffLocation.longitude 
+                        }
+                    })
+                });
+
+                if (!response.ok) throw new Error('Route calculation failed');
+                
+                const data = await response.json();
+                
+                let coordinates = null;
+                if (data.route?.geometry?.LineString) {
+                    coordinates = data.route.geometry.LineString;
+                }
+
+                if (coordinates && Array.isArray(coordinates)) {
+                    // Draw route
+                    if (map.getLayer('route')) map.removeLayer('route');
+                    if (map.getSource('route')) map.removeSource('route');
+
+                    map.addSource('route', {
+                        type: 'geojson',
+                        data: {
+                            type: 'Feature',
+                            geometry: { type: 'LineString', coordinates }
+                        }
+                    });
+
+                    map.addLayer({
+                        id: 'route',
+                        type: 'line',
+                        source: 'route',
+                        layout: { 'line-join': 'round', 'line-cap': 'round' },
+                        paint: { 
+                            'line-color': '#1a73e8', 
+                            'line-width': 5, 
+                            'line-opacity': 0.8,
+                            'line-dasharray': [2, 1]
+                        }
+                    });
+
+                    // Show route info in UI
+                    document.getElementById('routeInfo').style.display = 'block';
+                    const distance = (data.route.Distance / 1000).toFixed(1);
+                    document.getElementById('routeDistance').textContent = `${distance} km`;
+
+                    // Fit bounds
+                    const bounds = coordinates.reduce((b, coord) => b.extend(coord), 
+                        new maplibregl.LngLatBounds(coordinates[0], coordinates[0]));
+                    map.fitBounds(bounds, { padding: 70, duration: 1000 });
+                }
+                
+            } catch (error) {
+                console.error('Display route error:', error);
+            }
+        }
+
+        async function reverseGeocode(lat, lng, type) {
+            try {
+                const response = await fetch(`${API_BASE_URL}/maps/reverse-geocode`, {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ latitude: lat, longitude: lng })
+                });
+
+                if (!response.ok) throw new Error('Geocoding failed');
+                
+                const data = await response.json();
+                const address = data.address || 'Address not found';
+                
+                if (type === 'pickup') {
+                    document.getElementById('pickupAddress').value = address;
+                } else {
+                    document.getElementById('dropoffAddress').value = address;
+                }
+            } catch (error) {
+                console.error('Geocode error:', error);
+                if (type === 'pickup') {
+                    document.getElementById('pickupAddress').value = 'Address lookup failed';
+                } else {
+                    document.getElementById('dropoffAddress').value = 'Address lookup failed';
+                }
+            }
+        }
+
+        // ==================== ORDER FUNCTIONS ====================
+
+        async function createOrder() {
+            if (!pickupMarker || !dropoffMarker) {
+                showToast('Please select pickup and dropoff locations', 'error');
+                return;
+            }
+
+            const customerName = document.getElementById('customerName').value.trim();
+            const customerPhone = document.getElementById('customerPhone').value.trim();
+
+            if (!customerName || !customerPhone) {
+                showToast('Please enter your name and phone number', 'error');
+                return;
+            }
+
+            const pickup = pickupMarker.getLngLat();
+            const dropoff = dropoffMarker.getLngLat();
+
+            const btn = document.getElementById('createOrderBtn');
+            btn.disabled = true;
+            btn.innerHTML = '<span>⏳ Creating...</span>';
+
+            try {
+                const response = await fetch(`${API_BASE_URL}/orders`, {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({
+                        customerName,
+                        customerPhone,
+                        pickupLocation: { latitude: pickup.lat, longitude: pickup.lng },
+                        dropoffLocation: { latitude: dropoff.lat, longitude: dropoff.lng },
+                        pickupAddress: document.getElementById('pickupAddress').value,
+                        dropoffAddress: document.getElementById('dropoffAddress').value,
+                        notes: document.getElementById('notes').value.trim()
+                    })
+                });
+
+                if (!response.ok) throw new Error('Failed to create order');
+                
+                const data = await response.json();
+
+                if (data.success) {
+                    currentOrderId = data.order.orderId;
+                    currentOrder = data.order;
+                    displayOrderInfo(data.order);
+                    startTracking(currentOrderId);
+                    showToast(`Order created! ID: ${data.order.orderId}`, 'success');
+                }
+            } catch (error) {
+                console.error('Create order error:', error);
+                showToast('Failed to create order', 'error');
+            } finally {
+                btn.disabled = false;
+                btn.innerHTML = '📨 Create Order';
+            }
+        }
+
+        function displayOrderInfo(order) {
+            document.getElementById('displayOrderId').textContent = order.orderId;
+            document.getElementById('displayTracking').textContent = order.trackingNumber || order.orderId;
+            document.getElementById('displayStatus').textContent = order.status;
+            document.getElementById('displayStatus').className = `status-badge status-${order.status}`;
+            document.getElementById('displayCreated').textContent = new Date(order.createdAt).toLocaleString();
+            document.getElementById('displayCustomer').textContent = order.customerName;
+            document.getElementById('displayPhone').textContent = order.customerPhone || '-';
+
+            document.getElementById('orderInfo').classList.add('active');
+            document.getElementById('trackOrderId').value = order.orderId;
+            document.getElementById('destinationAddress').textContent = order.dropoffAddress || 'Address not specified';
+        }
+
+        async function trackOrder() {
+            const orderId = document.getElementById('trackOrderId').value.trim();
+            if (!orderId) {
+                showToast('Please enter an Order ID', 'error');
+                return;
+            }
+
+            try {
+                const response = await fetch(`${API_BASE_URL}/orders/${orderId}`, {
+                    method: 'GET',
+                    headers: { 'Content-Type': 'application/json' }
+                });
+
+                if (!response.ok) {
+                    if (response.status === 404) throw new Error('Order not found');
+                    throw new Error('Failed to fetch order');
+                }
+
+                const data = await response.json();
+                
+                currentOrderId = orderId;
+                currentOrder = data.order;
+                displayOrderInfo(data.order);
+                
+                // Display pickup and dropoff markers
+                if (data.order.pickupLocation) {
+                    if (pickupMarker) pickupMarker.remove();
+                    pickupMarker = new maplibregl.Marker({ color: '#34a853' })
+                        .setLngLat([data.order.pickupLocation.longitude, data.order.pickupLocation.latitude])
+                        .setPopup(new maplibregl.Popup().setHTML('<b>📍 Pickup</b>'))
+                        .addTo(map);
+                }
+                
+                if (data.order.dropoffLocation) {
+                    if (dropoffMarker) dropoffMarker.remove();
+                    dropoffMarker = new maplibregl.Marker({ color: '#ea4335' })
+                        .setLngLat([data.order.dropoffLocation.longitude, data.order.dropoffLocation.latitude])
+                        .setPopup(new maplibregl.Popup().setHTML('<b>📌 Dropoff</b>'))
+                        .addTo(map);
+                    
+                    document.getElementById('destinationAddress').textContent = data.order.dropoffAddress || 'Address not specified';
+                }
+                
+                // Draw the route on map - THIS IS THE NEW FEATURE
+                await displayOrderRoute(data.order);
+                
+                // Start tracking
+                startTracking(orderId);
+                
+                showToast(`Now tracking: ${orderId}`, 'success');
+                
+            } catch (error) {
+                console.error('Track error:', error);
+                showToast(error.message, 'error');
+            }
+        }
+
+        function trackOrderFromInfo() {
+            if (currentOrderId) {
+                trackOrder();
+            }
+        }
+
+        // ==================== RIDER TRACKING ====================
+
+        function startTracking(orderId) {
+            stopTracking();
+            
+            document.getElementById('trackingSection').classList.add('active');
+            
+            // Initial update
+            updateTracking(orderId);
+            
+            // Update every 5 seconds
+            trackingInterval = setInterval(() => {
+                updateTracking(orderId);
+            }, 5000);
+            
+            console.log(`Started tracking order: ${orderId}`);
+        }
+
+        async function updateTracking(orderId) {
+            try {
+                const response = await fetch(`${API_BASE_URL}/orders/${orderId}/track`, {
+                    method: 'GET',
+                    headers: { 'Content-Type': 'application/json' }
+                });
+
+                if (!response.ok) {
+                    throw new Error(`HTTP ${response.status}`);
+                }
+
+                const data = await response.json();
+                
+                // Update order status
+                if (data.order) {
+                    const status = data.order.status;
+                    document.getElementById('displayStatus').textContent = status;
+                    document.getElementById('displayStatus').className = `status-badge status-${status}`;
+                }
+
+                // Update rider location if available
+                if (data.riderLocation && data.riderLocation.currentLocation) {
+                    const riderLoc = data.riderLocation.currentLocation;
+                    const riderId = data.riderId || data.order?.riderId || 'Unknown';
+                    
+                    // Update rider marker
+                    updateRiderMarker(riderLoc.longitude, riderLoc.latitude);
+                    
+                    // Update UI
+                    document.getElementById('riderName').textContent = `Rider ${riderId.toString().substr(-4)}`;
+                    document.getElementById('riderAvatar').textContent = riderId.toString().charAt(0).toUpperCase();
+                    document.getElementById('riderLocation').textContent = 
+                        `${riderLoc.latitude.toFixed(6)}, ${riderLoc.longitude.toFixed(6)}`;
+                    
+                    const lastUpdated = data.riderLocation.lastUpdated 
+                        ? new Date(data.riderLocation.lastUpdated).toLocaleTimeString() 
+                        : 'Just now';
+                    document.getElementById('lastUpdated').textContent = `Updated: ${lastUpdated}`;
+                    
+                    document.getElementById('riderStatus').innerHTML = 
+                        '<span style="width: 8px; height: 8px; background: #34a853; border-radius: 50%; display: inline-block;"></span> Active - On Route';
+                    
+                    // Calculate progress
+                    if (currentOrder && currentOrder.pickupLocation && currentOrder.dropoffLocation) {
+                        const progress = calculateProgress(
+                            riderLoc,
+                            currentOrder.pickupLocation,
+                            currentOrder.dropoffLocation
+                        );
+                        
+                        document.getElementById('progressFill').style.width = `${progress.percentage}%`;
+                        document.getElementById('progressPercentage').textContent = `${progress.percentage}%`;
+                        document.getElementById('distanceToDropoff').innerHTML = 
+                            `${progress.distanceToDropoff} m remaining`;
+                        
+                        if (progress.distanceToDropoff > 0) {
+                            const etaMinutes = Math.ceil(progress.distanceToDropoff / 300);
+                            document.getElementById('estimatedArrival').innerHTML = 
+                                `~${etaMinutes} minute${etaMinutes !== 1 ? 's' : ''}`;
+                        } else {
+                            document.getElementById('estimatedArrival').innerHTML = 'Arrived';
+                        }
+                    }
+                    
+                } else {
+                    // No rider assigned
+                    document.getElementById('riderName').textContent = 'Rider Not Assigned';
+                    document.getElementById('riderStatus').innerHTML = 
+                        '<span style="width: 8px; height: 8px; background: #fbbc04; border-radius: 50%; display: inline-block;"></span> Waiting for assignment';
+                    document.getElementById('riderLocation').textContent = '-';
+                    document.getElementById('lastUpdated').textContent = '-';
+                    document.getElementById('distanceToDropoff').textContent = '-';
+                    document.getElementById('estimatedArrival').textContent = '-';
+                    document.getElementById('progressFill').style.width = '0%';
+                    document.getElementById('progressPercentage').textContent = '0%';
+                    
+                    // Hide route info if no rider
+                    document.getElementById('routeInfo').style.display = 'none';
+                }
+
+            } catch (error) {
+                console.error('Tracking update failed:', error);
+            }
+        }
+
+        function updateRiderMarker(longitude, latitude) {
+            try {
+                if (riderMarker) {
+                    riderMarker.setLngLat([longitude, latitude]);
+                } else {
+                    const el = document.createElement('div');
+                    el.style.width = '30px';
+                    el.style.height = '30px';
+                    el.style.background = '#fbbc04';
+                    el.style.borderRadius = '50%';
+                    el.style.border = '3px solid white';
+                    el.style.boxShadow = '0 2px 8px rgba(0,0,0,0.3)';
+                    el.style.display = 'flex';
+                    el.style.alignItems = 'center';
+                    el.style.justifyContent = 'center';
+                    el.style.color = 'white';
+                    el.style.fontSize = '16px';
+                    el.innerHTML = '🚴';
+                    
+                    riderMarker = new maplibregl.Marker({ element: el })
+                        .setLngLat([longitude, latitude])
+                        .setPopup(new maplibregl.Popup().setHTML('<b>Rider Location</b>'))
+                        .addTo(map);
+                }
+            } catch (error) {
+                console.error('Marker update error:', error);
+            }
+        }
+
+        function calculateProgress(riderLoc, pickupLoc, dropoffLoc) {
+            const distanceToDropoff = calculateDistance(
+                riderLoc.latitude, riderLoc.longitude,
+                dropoffLoc.latitude, dropoffLoc.longitude
+            );
+            
+            const totalDistance = calculateDistance(
+                pickupLoc.latitude, pickupLoc.longitude,
+                dropoffLoc.latitude, dropoffLoc.longitude
+            );
+            
+            let percentage = 0;
+            if (totalDistance > 0) {
+                const distanceTraveled = totalDistance - distanceToDropoff;
+                percentage = Math.min(100, Math.max(0, Math.round((distanceTraveled / totalDistance) * 100)));
+            }
+            
+            return {
+                percentage,
+                distanceToDropoff: Math.round(distanceToDropoff)
+            };
+        }
+
+        function calculateDistance(lat1, lon1, lat2, lon2) {
+            const R = 6371e3;
+            const φ1 = lat1 * Math.PI / 180;
+            const φ2 = lat2 * Math.PI / 180;
+            const Δφ = (lat2 - lat1) * Math.PI / 180;
+            const Δλ = (lon2 - lon1) * Math.PI / 180;
+
+            const a = Math.sin(Δφ/2) * Math.sin(Δφ/2) +
+                    Math.cos(φ1) * Math.cos(φ2) *
+                    Math.sin(Δλ/2) * Math.sin(Δλ/2);
+            const c = 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1-a));
+
+            return R * c;
+        }
+
+        function stopTracking() {
+            if (trackingInterval) {
+                clearInterval(trackingInterval);
+                trackingInterval = null;
+                console.log('Tracking stopped');
+            }
+            document.getElementById('trackingSection').classList.remove('active');
+            document.getElementById('routeInfo').style.display = 'none';
+        }
+
+        // ==================== UTILITY FUNCTIONS ====================
+
+        function updateApiStatus(message, status) {
+            const el = document.getElementById('apiStatus');
+            const textEl = document.getElementById('apiStatusText');
+            el.className = `api-status ${status}`;
+            textEl.textContent = message;
+        }
+
+        function showToast(message, type = 'info') {
+            const toast = document.getElementById('toast');
+            let icon = 'ℹ️';
+            if (type === 'success') icon = '✅';
+            if (type === 'error') icon = '❌';
+            if (type === 'warning') icon = '⚠️';
+            
+            toast.innerHTML = `${icon} ${message}`;
+            toast.className = 'toast';
+            toast.classList.add(`toast-${type}`);
+            
+            setTimeout(() => toast.classList.add('show'), 10);
+            setTimeout(() => toast.classList.remove('show'), 4000);
+        }
+
+        // Cleanup on page unload
+        window.addEventListener('beforeunload', function() {
+            stopTracking();
+        });
+    </script>
 </body>
 </html>

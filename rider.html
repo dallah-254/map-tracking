@@ -77,6 +77,11 @@
             border: 2px solid #5a67d8;
         }
 
+        .legend-color.manual {
+            background: #ff9800;
+            border: 2px solid #e68900;
+        }
+
         .legend-color.pickup {
             background: #28a745;
             border: 2px solid #218838;
@@ -232,6 +237,47 @@
             gap: 8px;
         }
 
+        /* Location Control Section */
+        .location-control-card {
+            background: #f8f9fa;
+            border-radius: 10px;
+            padding: 16px;
+            margin-top: 10px;
+            border: 1px solid #e9ecef;
+        }
+
+        .current-coords {
+            font-family: monospace;
+            background: white;
+            padding: 10px 12px;
+            border-radius: 6px;
+            border: 1px solid #dee2e6;
+            font-size: 0.85rem;
+            word-break: break-all;
+            margin-bottom: 12px;
+        }
+
+        .location-mode-indicator {
+            display: flex;
+            align-items: center;
+            gap: 10px;
+            padding: 10px;
+            background: white;
+            border-radius: 6px;
+            margin-bottom: 15px;
+            border-left: 4px solid;
+        }
+
+        .mode-gps {
+            border-left-color: #28a745;
+            background: #f0fff4;
+        }
+
+        .mode-manual {
+            border-left-color: #ff9800;
+            background: #fff3e0;
+        }
+
         /* Form Elements */
         .form-group {
             margin-bottom: 15px;
@@ -297,6 +343,26 @@
             transform: translateY(-1px);
         }
 
+        .btn-warning {
+            background: #ff9800;
+            color: white;
+        }
+
+        .btn-warning:hover {
+            background: #e68900;
+            transform: translateY(-1px);
+        }
+
+        .btn-info {
+            background: #17a2b8;
+            color: white;
+        }
+
+        .btn-info:hover {
+            background: #138496;
+            transform: translateY(-1px);
+        }
+
         .btn-secondary {
             background: #6c757d;
             color: white;
@@ -342,6 +408,12 @@
 
         .btn-group-horizontal .btn {
             flex: 1;
+        }
+
+        .btn-group-vertical {
+            display: flex;
+            flex-direction: column;
+            gap: 10px;
         }
 
         /* Tracking Controls */
@@ -507,6 +579,17 @@
             color: #155724;
         }
 
+        /* Manual Instructions */
+        .manual-instructions {
+            margin-top: 15px;
+            padding: 12px;
+            background: #fff3e0;
+            border-radius: 6px;
+            border-left: 4px solid #ff9800;
+            font-size: 0.85rem;
+            color: #e65100;
+        }
+
         /* Empty State */
         .empty-state {
             text-align: center;
@@ -547,6 +630,7 @@
         .toast-success { background: #28a745; }
         .toast-error { background: #dc3545; }
         .toast-info { background: #17a2b8; }
+        .toast-warning { background: #ff9800; }
 
         /* Responsive */
         @media (max-width: 1024px) {
@@ -571,7 +655,11 @@
                 <div class="legend">
                     <div class="legend-item">
                         <div class="legend-color you"></div>
-                        <span>Your Location</span>
+                        <span>GPS Location (Blue)</span>
+                    </div>
+                    <div class="legend-item">
+                        <div class="legend-color manual"></div>
+                        <span>Manual Location (Orange)</span>
                     </div>
                     <div class="legend-item">
                         <div class="legend-color pickup"></div>
@@ -593,7 +681,7 @@
         <div class="sidebar">
             <div class="sidebar-header">
                 <h1>🚴 Rider Dashboard</h1>
-                <p style="opacity: 0.9; margin-top: 5px;">Accept deliveries and track your route</p>
+                <p style="opacity: 0.9; margin-top: 5px;">Accept deliveries and control your location</p>
             </div>
 
             <div class="sidebar-content">
@@ -628,9 +716,61 @@
                     </div>
                 </div>
 
-                <!-- Tracking Controls -->
+                <!-- ===== NEW LOCATION CONTROL SECTION ===== -->
                 <div class="section">
-                    <h2 style="margin-bottom: 15px;">📡 Location Tracking</h2>
+                    <div class="section-header">
+                        <h2>
+                            <span>📍</span> Location Control
+                        </h2>
+                        <span id="locationModeBadge" class="status-badge status-online" style="background: #e3f2fd; color: #0d47a1;">
+                            <span class="status-dot" style="background: #2196f3;"></span>
+                            <span id="locationModeText">GPS Mode</span>
+                        </span>
+                    </div>
+                    
+                    <div class="location-control-card">
+                        <!-- Current Coordinates Display -->
+                        <div class="current-coords" id="currentCoordsDisplay">
+                            📍 Current: --, --
+                        </div>
+                        
+                        <!-- Mode Indicator -->
+                        <div id="locationModeIndicator" class="location-mode-indicator mode-gps">
+                            <div style="width: 8px; height: 8px; background: #28a745; border-radius: 50%; animation: pulse 2s infinite;"></div>
+                            <div style="flex: 1;">
+                                <strong id="modeTitle">Live GPS Tracking</strong>
+                                <p style="font-size: 0.8rem; color: #6c757d; margin-top: 2px;" id="modeDescription">
+                                    Using your real device location
+                                </p>
+                            </div>
+                        </div>
+                        
+                        <!-- Location Control Buttons - YOUR REQUESTED BUTTONS -->
+                        <div class="btn-group-vertical" style="margin-top: 15px;">
+                            <div class="btn-group-horizontal">
+                                <button class="btn btn-warning" onclick="enableManualMode()" id="manualModeBtn" style="flex: 1;">
+                                    🖱️ Set Manual Location
+                                </button>
+                                <button class="btn btn-info" onclick="enableGpsMode()" id="gpsModeBtn" style="flex: 1; display: none;">
+                                    📡 Return to Live GPS
+                                </button>
+                            </div>
+                            <button class="btn btn-secondary" onclick="centerOnLocation()" id="centerLocationBtn">
+                                📍 Center Map on My Location
+                            </button>
+                        </div>
+                        
+                        <!-- Manual Mode Instructions (hidden by default) -->
+                        <div id="manualInstructions" class="manual-instructions" style="display: none;">
+                            <strong>🖱️ Manual Mode Active:</strong> Click anywhere on the map to set your custom location. 
+                            This location will be sent to clients instead of your real GPS.
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Tracking Controls (Modified to show mode) -->
+                <div class="section">
+                    <h2 style="margin-bottom: 15px;">📡 Tracking Status</h2>
                     <div class="tracking-controls">
                         <button class="tracking-btn" onclick="toggleTracking()" id="trackingBtn">
                             <span>📡</span> Go Online
@@ -643,6 +783,7 @@
                         <p style="font-size: 0.85rem; color: #6c757d; display: flex; align-items: center; gap: 8px;">
                             <span id="trackingStatusIndicator" style="width: 8px; height: 8px; background: #dc3545; border-radius: 50%; display: inline-block;"></span>
                             <span id="trackingStatusText">Status: Offline</span>
+                            <span id="modeStatusText" style="margin-left: auto; font-weight: 600; color: #667eea;">GPS</span>
                         </p>
                     </div>
                 </div>
@@ -715,6 +856,7 @@
         // ==================== GLOBAL VARIABLES ====================
         let map;
         let riderMarker = null;
+        let manualMarker = null;
         let pickupMarker = null;
         let dropoffMarker = null;
         let routeLayer = null;
@@ -724,6 +866,10 @@
         let isTracking = false;
         let currentLocation = null;
         let locationWatchId = null;
+        
+        // NEW: Location mode variables
+        let isManualMode = false;
+        let manualLocation = null;
 
         // ==================== INITIALIZATION ====================
         window.onload = function() {
@@ -745,7 +891,7 @@
                 document.getElementById('riderName').textContent = 'Rider ' + riderId.substr(-4);
                 document.getElementById('riderAvatar').textContent = riderId.charAt(0);
                 showToast(`Rider ID set to: ${riderId}`, 'success');
-                fetchAvailableOrders(); // Auto-fetch orders after setting ID
+                fetchAvailableOrders();
             } else {
                 showToast('Please enter a Rider ID', 'error');
             }
@@ -776,6 +922,9 @@
                 map.on('load', () => {
                     console.log('Map loaded successfully');
                     getCurrentLocation();
+                    
+                    // Add click handler for manual location
+                    setupMapClickHandler();
                 });
 
             } catch (error) {
@@ -784,15 +933,29 @@
             }
         }
 
+        function setupMapClickHandler() {
+            map.on('click', (e) => {
+                if (isManualMode) {
+                    const { lat, lng } = e.lngLat;
+                    setManualLocation(lat, lng);
+                }
+            });
+        }
+
         function getCurrentLocation() {
             if (navigator.geolocation) {
                 navigator.geolocation.getCurrentPosition(
                     (position) => {
                         const { latitude, longitude } = position.coords;
                         currentLocation = { latitude, longitude };
-                        map.setCenter([longitude, latitude]);
-                        map.setZoom(15);
-                        addRiderMarker(latitude, longitude);
+                        
+                        // Only update marker if not in manual mode
+                        if (!isManualMode) {
+                            updateRiderMarker(latitude, longitude, false);
+                            updateLocationDisplay(latitude, longitude);
+                            map.setCenter([longitude, latitude]);
+                            map.setZoom(15);
+                        }
                     },
                     (error) => {
                         console.warn('Geolocation error:', error.message);
@@ -802,13 +965,141 @@
             }
         }
 
-        function addRiderMarker(lat, lng) {
-            if (riderMarker) riderMarker.remove();
+        // ==================== LOCATION MODE FUNCTIONS ====================
+        
+        // YOUR REQUESTED BUTTON: Enable Manual Mode
+        function enableManualMode() {
+            isManualMode = true;
+            
+            // Update UI
+            document.getElementById('manualModeBtn').style.display = 'none';
+            document.getElementById('gpsModeBtn').style.display = 'block';
+            document.getElementById('manualInstructions').style.display = 'block';
+            
+            // Update mode indicator
+            const indicator = document.getElementById('locationModeIndicator');
+            indicator.className = 'location-mode-indicator mode-manual';
+            indicator.innerHTML = `
+                <div style="width: 8px; height: 8px; background: #ff9800; border-radius: 50%;"></div>
+                <div style="flex: 1;">
+                    <strong id="modeTitle">Manual Location Mode</strong>
+                    <p style="font-size: 0.8rem; color: #6c757d; margin-top: 2px;" id="modeDescription">
+                        Click on map to set custom location
+                    </p>
+                </div>
+            `;
+            
+            document.getElementById('locationModeBadge').innerHTML = `
+                <span class="status-dot" style="background: #ff9800;"></span>
+                <span id="locationModeText">Manual Mode</span>
+            `;
+            document.getElementById('locationModeBadge').className = 'status-badge status-busy';
+            document.getElementById('modeStatusText').innerHTML = 'MANUAL';
+            document.getElementById('modeStatusText').style.color = '#ff9800';
+            
+            showToast('Manual mode enabled - Click on the map to set your location', 'warning');
+        }
+
+        // YOUR REQUESTED BUTTON: Return to Live GPS
+        function enableGpsMode() {
+            isManualMode = false;
+            manualLocation = null;
+            
+            // Remove manual marker
+            if (manualMarker) {
+                manualMarker.remove();
+                manualMarker = null;
+            }
+            
+            // Update UI
+            document.getElementById('manualModeBtn').style.display = 'block';
+            document.getElementById('gpsModeBtn').style.display = 'none';
+            document.getElementById('manualInstructions').style.display = 'none';
+            
+            // Update mode indicator
+            const indicator = document.getElementById('locationModeIndicator');
+            indicator.className = 'location-mode-indicator mode-gps';
+            indicator.innerHTML = `
+                <div style="width: 8px; height: 8px; background: #28a745; border-radius: 50%; animation: pulse 2s infinite;"></div>
+                <div style="flex: 1;">
+                    <strong id="modeTitle">Live GPS Tracking</strong>
+                    <p style="font-size: 0.8rem; color: #6c757d; margin-top: 2px;" id="modeDescription">
+                        Using your real device location
+                    </p>
+                </div>
+            `;
+            
+            document.getElementById('locationModeBadge').innerHTML = `
+                <span class="status-dot" style="background: #2196f3;"></span>
+                <span id="locationModeText">GPS Mode</span>
+            `;
+            document.getElementById('locationModeBadge').className = 'status-badge status-online';
+            document.getElementById('modeStatusText').innerHTML = 'GPS';
+            document.getElementById('modeStatusText').style.color = '#667eea';
+            
+            // Restore GPS location
+            if (currentLocation) {
+                updateRiderMarker(currentLocation.latitude, currentLocation.longitude, false);
+                updateLocationDisplay(currentLocation.latitude, currentLocation.longitude);
+                
+                if (isTracking && currentOrder) {
+                    updateRiderLocation(currentLocation.latitude, currentLocation.longitude);
+                }
+            }
+            
+            showToast('Returned to live GPS tracking', 'success');
+        }
+
+        // Set manual location by clicking on map
+        function setManualLocation(lat, lng) {
+            manualLocation = { latitude: lat, longitude: lng };
+            
+            // Update rider marker (orange for manual mode)
+            updateRiderMarker(lat, lng, true);
+            updateLocationDisplay(lat, lng);
+            
+            // Add manual marker indicator
+            if (manualMarker) {
+                manualMarker.remove();
+            }
+            
+            const el = document.createElement('div');
+            el.style.width = '20px';
+            el.style.height = '20px';
+            el.style.background = '#ff9800';
+            el.style.borderRadius = '50%';
+            el.style.border = '3px solid white';
+            el.style.boxShadow = '0 0 0 2px #ff9800';
+            
+            manualMarker = new maplibregl.Marker({ element: el })
+                .setLngLat([lng, lat])
+                .addTo(map);
+            
+            // Send manual location to server if tracking and have active order
+            if (isTracking && currentOrder) {
+                updateRiderLocation(lat, lng);
+                showToast(`Manual location sent: ${lat.toFixed(6)}, ${lng.toFixed(6)}`, 'success');
+            } else {
+                showToast(`Manual location set: ${lat.toFixed(6)}, ${lng.toFixed(6)}`, 'info');
+            }
+            
+            // Update instructions
+            document.getElementById('manualInstructions').innerHTML = `
+                <strong>📍 Manual Location Set:</strong> ${lat.toFixed(6)}, ${lng.toFixed(6)}<br>
+                <small>This location is being sent to clients</small>
+            `;
+        }
+
+        // Update rider marker on map
+        function updateRiderMarker(lat, lng, isManual = false) {
+            if (riderMarker) {
+                riderMarker.remove();
+            }
             
             const el = document.createElement('div');
             el.style.width = '40px';
             el.style.height = '40px';
-            el.style.background = '#667eea';
+            el.style.background = isManual ? '#ff9800' : '#667eea';
             el.style.borderRadius = '50%';
             el.style.border = '3px solid white';
             el.style.boxShadow = '0 2px 8px rgba(0,0,0,0.3)';
@@ -821,19 +1112,30 @@
             
             riderMarker = new maplibregl.Marker({ element: el })
                 .setLngLat([lng, lat])
-                .setPopup(new maplibregl.Popup().setHTML('<b>Your Location</b>'))
+                .setPopup(new maplibregl.Popup().setHTML(`<b>Your Location</b><br>Mode: ${isManual ? 'MANUAL' : 'GPS'}`))
                 .addTo(map);
+            
+            // Update current location object
+            currentLocation = { latitude: lat, longitude: lng };
         }
 
-        // ==================== FETCH ORDERS - THIS IS THE FIX ====================
-        // Using the same endpoint as client: GET /orders
+        // Update location display in UI
+        function updateLocationDisplay(lat, lng) {
+            document.getElementById('currentCoordsDisplay').innerHTML = `
+                📍 Current: ${lat.toFixed(6)}, ${lng.toFixed(6)}
+                <span style="margin-left: 8px; padding: 2px 6px; background: ${isManualMode ? '#ff9800' : '#2196f3'}; color: white; border-radius: 4px; font-size: 0.7rem;">
+                    ${isManualMode ? 'MANUAL' : 'GPS'}
+                </span>
+            `;
+        }
+
+        // ==================== FETCH ORDERS ====================
         async function fetchAvailableOrders() {
             if (!riderId) {
                 showToast('Please set your Rider ID first', 'error');
                 return;
             }
 
-            // Show spinner on refresh button
             const refreshBtn = document.getElementById('refreshOrdersBtn');
             const fetchBtn = document.getElementById('fetchOrdersBtn');
             
@@ -847,7 +1149,6 @@
             }
 
             try {
-                // Use the SAME endpoint as client: /orders
                 const response = await fetch(`${API_BASE_URL}/orders`, {
                     method: 'GET',
                     headers: { 
@@ -860,9 +1161,7 @@
                 }
 
                 const data = await response.json();
-                console.log('Orders fetched:', data);
                 
-                // Extract orders array - handle different response formats
                 let allOrders = [];
                 if (data.orders && Array.isArray(data.orders)) {
                     allOrders = data.orders;
@@ -872,14 +1171,10 @@
                     allOrders = data;
                 }
 
-                // Filter ONLY pending orders
                 const pendingOrders = allOrders.filter(order => 
                     order.status === 'pending' || order.status === 'Pending' || order.status === 'PENDING'
                 );
 
-                console.log(`Found ${pendingOrders.length} pending orders out of ${allOrders.length} total`);
-                
-                // Display the pending orders
                 displayAvailableOrders(pendingOrders);
                 
                 showToast(`Found ${pendingOrders.length} available orders`, 'success');
@@ -897,7 +1192,6 @@
                 `;
                 
             } finally {
-                // Restore buttons
                 if (refreshBtn) {
                     refreshBtn.innerHTML = '🔄 Refresh';
                     refreshBtn.disabled = false;
@@ -909,7 +1203,6 @@
             }
         }
 
-        // Display available orders in the sidebar
         function displayAvailableOrders(orders) {
             const list = document.getElementById('ordersList');
             
@@ -979,7 +1272,6 @@
                 return;
             }
 
-            // Find the order from the DOM or fetch it
             try {
                 showToast('Accepting order...', 'info');
 
@@ -999,23 +1291,19 @@
                 const data = await response.json();
                 
                 if (data.success) {
-                    // Fetch full order details
                     const orderRes = await fetch(`${API_BASE_URL}/orders/${orderId}`);
                     const orderData = await orderRes.json();
                     
                     currentOrder = orderData.order || orderData;
                     currentOrder.status = 'assigned';
                     
-                    // Show current order
                     displayCurrentOrder(currentOrder);
                     
-                    // Remove from available orders list
                     const orderElement = document.getElementById(`order-${orderId}`);
                     if (orderElement) orderElement.remove();
                     
                     showToast('Order accepted successfully!', 'success');
                     
-                    // Start tracking if not already
                     if (!isTracking) {
                         toggleTracking();
                     }
@@ -1028,13 +1316,9 @@
         }
 
         function displayCurrentOrder(order) {
-            // Show current order container
             document.getElementById('currentOrderContainer').style.display = 'block';
-            
-            // Update order ID
             document.getElementById('currentOrderIdDisplay').textContent = order.orderId;
             
-            // Build order details HTML
             const details = document.getElementById('currentOrderDetails');
             details.innerHTML = `
                 <div class="current-order-details">
@@ -1057,10 +1341,8 @@
                 </div>
             `;
             
-            // Show pickup and dropoff on map
             displayOrderOnMap(order);
             
-            // Reset button states
             document.getElementById('pickupBtn').style.display = 'block';
             document.getElementById('deliverBtn').style.display = 'none';
             document.getElementById('currentOrderStatusBadge').innerHTML = 
@@ -1099,7 +1381,6 @@
                             '<span class="status-dot"></span><span>Picked Up</span>';
                         showToast('Order picked up! Head to dropoff.', 'success');
                         
-                        // Show route to dropoff
                         if (currentOrder.pickupLocation && currentOrder.dropoffLocation) {
                             await calculateRoute(
                                 currentOrder.pickupLocation,
@@ -1133,7 +1414,7 @@
             currentOrder = null;
             document.getElementById('currentOrderContainer').style.display = 'none';
             clearOrderFromMap();
-            fetchAvailableOrders(); // Refresh the list
+            fetchAvailableOrders();
         }
 
         // ==================== MAP FUNCTIONS ====================
@@ -1154,14 +1435,7 @@
                     .addTo(map);
             }
             
-            // Route to pickup if we have current location
-            if (currentLocation && order.pickupLocation) {
-                calculateRoute(
-                    { latitude: currentLocation.latitude, longitude: currentLocation.longitude },
-                    order.pickupLocation
-                );
-            } else if (order.pickupLocation && order.dropoffLocation) {
-                // Or show route between pickup and dropoff
+            if (order.pickupLocation && order.dropoffLocation) {
                 calculateRoute(
                     order.pickupLocation,
                     order.dropoffLocation
@@ -1193,17 +1467,12 @@
                 let coordinates = null;
                 if (data.route?.geometry?.LineString) {
                     coordinates = data.route.geometry.LineString;
-                } else if (data.route?.geometry && Array.isArray(data.route.geometry)) {
-                    coordinates = data.route.geometry;
-                } else if (data.coordinates) {
-                    coordinates = data.coordinates;
                 }
 
                 if (!coordinates || !Array.isArray(coordinates)) {
                     throw new Error('Invalid route data format');
                 }
 
-                // Draw route
                 if (map.getLayer('route')) map.removeLayer('route');
                 if (map.getSource('route')) map.removeSource('route');
 
@@ -1233,7 +1502,6 @@
                     }
                 });
 
-                // Fit bounds
                 const bounds = coordinates.reduce((b, coord) => b.extend(coord), 
                     new maplibregl.LngLatBounds(coordinates[0], coordinates[0]));
                 map.fitBounds(bounds, { padding: 70, duration: 1000 });
@@ -1266,40 +1534,43 @@
         }
 
         function startTracking() {
-            if (!navigator.geolocation) {
-                showToast('Geolocation is not supported by your browser', 'error');
+            if (!navigator.geolocation && !isManualMode) {
+                showToast('Geolocation not supported and not in manual mode', 'error');
                 return;
             }
 
             isTracking = true;
             
-            locationWatchId = navigator.geolocation.watchPosition(
-                (position) => {
-                    const { latitude, longitude } = position.coords;
-                    currentLocation = { latitude, longitude };
-                    
-                    if (riderMarker) {
-                        riderMarker.setLngLat([longitude, latitude]);
-                    } else {
-                        addRiderMarker(latitude, longitude);
+            if (isManualMode && manualLocation) {
+                // Send manual location immediately
+                updateRiderLocation(manualLocation.latitude, manualLocation.longitude);
+            } else if (!isManualMode) {
+                // Start GPS tracking
+                locationWatchId = navigator.geolocation.watchPosition(
+                    (position) => {
+                        const { latitude, longitude } = position.coords;
+                        
+                        if (!isManualMode) {
+                            updateRiderMarker(latitude, longitude, false);
+                            updateLocationDisplay(latitude, longitude);
+                            currentLocation = { latitude, longitude };
+                            
+                            if (currentOrder) {
+                                updateRiderLocation(latitude, longitude);
+                            }
+                        }
+                    },
+                    (error) => {
+                        console.error('Geolocation error:', error.message);
+                    },
+                    { 
+                        enableHighAccuracy: true, 
+                        maximumAge: 10000, 
+                        timeout: 5000 
                     }
-                    
-                    // Send location to server if we have an active order
-                    if (currentOrder) {
-                        updateLocation(latitude, longitude);
-                    }
-                },
-                (error) => {
-                    console.error('Geolocation error:', error.message);
-                },
-                { 
-                    enableHighAccuracy: true, 
-                    maximumAge: 10000, 
-                    timeout: 5000 
-                }
-            );
+                );
+            }
             
-            // Update UI
             document.getElementById('trackingBtn').innerHTML = '<span>📡</span> Online';
             document.getElementById('trackingBtn').classList.add('active');
             document.getElementById('trackingStatusIndicator').style.background = '#28a745';
@@ -1308,7 +1579,7 @@
             document.getElementById('riderStatusBadge').innerHTML = 
                 '<span class="status-dot"></span><span>Online</span>';
             
-            showToast('Location tracking started', 'success');
+            showToast(`Tracking started - Mode: ${isManualMode ? 'MANUAL' : 'GPS'}`, 'success');
         }
 
         function stopTracking() {
@@ -1327,10 +1598,10 @@
             document.getElementById('riderStatusBadge').innerHTML = 
                 '<span class="status-dot"></span><span>Offline</span>';
             
-            showToast('Location tracking stopped', 'info');
+            showToast('Tracking stopped', 'info');
         }
 
-        async function updateLocation(latitude, longitude) {
+        async function updateRiderLocation(latitude, longitude) {
             if (!riderId || !currentOrder) return;
             
             try {
@@ -1342,7 +1613,8 @@
                         orderId: currentOrder.orderId,
                         latitude: parseFloat(latitude),
                         longitude: parseFloat(longitude),
-                        isTracking: true
+                        isTracking: true,
+                        locationMode: isManualMode ? 'manual' : 'gps'
                     })
                 });
             } catch (error) {
